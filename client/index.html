@@ -273,10 +273,10 @@
       border-radius: var(--radius-lg);
       padding: var(--space-lg);
       max-width: 320px;
+      max-height: 90vh;
+      overflow-y: auto;
       box-shadow: var(--shadow-strong);
       pointer-events: auto;
-      /* 确保不超出屏幕顶部 */
-      margin-top: 0;
     }
     .tutorial-tooltip h3 {
       color: var(--gold);
@@ -2160,7 +2160,8 @@
     const viewH = window.innerHeight;
     const isMobile = viewW < 480;
     const tipWidth = isMobile ? 280 : 320;
-    const tipMinH = isMobile ? 180 : 200; // 提示框预估最小高度
+    const tipMinH = isMobile ? 170 : 210;
+    const PAD = isMobile ? 8 : 12;
 
     let spotlightStyle = '';
     let tipTop, tipLeft;
@@ -2168,31 +2169,51 @@
 
     if (targetEl) {
       targetRect = targetEl.getBoundingClientRect();
-      spotlightStyle = `top:${targetRect.top - 8}px;left:${targetRect.left - 8}px;width:${targetRect.width + 16}px;height:${targetRect.height + 16}px;`;
 
-      // === 智能垂直定位 ===
-      const spaceBelow = viewH - targetRect.bottom - 16;  // 目标下方剩余空间
-      const spaceAbove = targetRect.top - 16;              // 目标上方剩余空间
+      // Spotlight 跟随目标元素
+      spotlightStyle = `top:${targetRect.top - 6}px;left:${targetRect.left - 6}px;`
+        + `width:${targetRect.width + 12}px;height:${targetRect.height + 12}px;`;
 
-      if (spaceBelow >= tipMinH || spaceBelow >= spaceAbove) {
-        // 下方空间够用，或者下方比上方空间多 → 放下方
-        tipTop = targetRect.bottom + 16;
-        // 如果提示框仍超出屏幕，向上挪
-        if (tipTop + tipMinH > viewH - 10) {
-          tipTop = Math.max(10, viewH - tipMinH - 10);
+      // 目标是否在屏幕可视区域内
+      const targetInView = targetRect.bottom > 0 && targetRect.top < viewH;
+
+      // === 垂直定位 ===
+      if (targetInView) {
+        const spaceBelow = viewH - targetRect.bottom - PAD;
+        const spaceAbove = targetRect.top - PAD;
+
+        if (spaceBelow >= tipMinH) {
+          // 优先放下面
+          tipTop = targetRect.bottom + PAD;
+        } else if (spaceAbove >= tipMinH) {
+          // 下面不够放上面
+          tipTop = targetRect.top - tipMinH - PAD;
+        } else {
+          // 上下都不够（极小屏幕）→ 哪边空间大放哪边
+          tipTop = spaceBelow >= spaceAbove
+            ? viewH - tipMinH - PAD
+            : PAD;
         }
       } else {
-        // 上方空间更多 → 放上方
-        tipTop = Math.max(10, targetRect.top - tipMinH - 16);
+        // 目标不在可视区域 → 放屏幕中央
+        tipTop = (viewH - tipMinH) / 2;
       }
 
-      // === 智能水平定位 ===
+      // 最终安全 clamp：强制在屏幕内
+      const maxTop = viewH - tipMinH - PAD;
+      if (tipTop < PAD) tipTop = PAD;
+      if (tipTop > maxTop) tipTop = maxTop;
+
+      // === 水平定位 ===
       tipLeft = targetRect.left + targetRect.width / 2 - tipWidth / 2;
-      tipLeft = Math.max(8, Math.min(tipLeft, viewW - tipWidth - 8));
+      const maxLeft = viewW - tipWidth - PAD;
+      if (tipLeft < PAD) tipLeft = PAD;
+      if (tipLeft > maxLeft) tipLeft = maxLeft;
     } else {
-      spotlightStyle = `top:50%;left:50%;width:200px;height:100px;transform:translate(-50%,-50%);`;
-      tipTop = Math.max(40, (viewH - tipMinH) / 2);
-      tipLeft = Math.max(8, (viewW - tipWidth) / 2);
+      // 目标不存在 → 放屏幕中央
+      spotlightStyle = 'top:50%;left:50%;width:200px;height:100px;transform:translate(-50%,-50%);';
+      tipTop = (viewH - tipMinH) / 2;
+      tipLeft = (viewW - tipWidth) / 2;
     }
 
     overlay.innerHTML = `
