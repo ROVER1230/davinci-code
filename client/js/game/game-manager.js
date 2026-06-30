@@ -23,10 +23,13 @@ const GameManager = {
   onGameOver: null,
   onAITurn: null,
   onAIGuessConfirm: null,  // AI猜测时需要玩家确认的回调
+  onPlayerGuessConfirm: null,  // 玩家自己猜测结果的确认回调
   onToast: null,
 
   // AI暂停机制
   _aiPauseResolver: null,
+  // 玩家猜测结果确认暂停
+  _playerConfirmResolver: null,
 
   /**
    * 初始化游戏
@@ -212,11 +215,12 @@ const GameManager = {
   /**
    * 猜测对手牌
    */
-  doGuess(targetPlayerId, position, color, number) {
+  async doGuess(targetPlayerId, position, color, number) {
     try {
       // 保存猜测者信息（makeGuess后currentPlayerIndex可能变化）
       const guesserBefore = this.getCurrentPlayer();
       const guesserId = guesserBefore ? guesserBefore.id : null;
+      const isHumanGuesser = guesserBefore && !guesserBefore.isAI;
 
       // 标准规则：猜错时自动公开摸到的牌（牌堆空时才自选）
       const result = GameCore.makeGuess(this.game, targetPlayerId, position, color, number,
@@ -228,6 +232,21 @@ const GameManager = {
 
       if (this.onStateChange) this.onStateChange(this.game);
       if (this.onGuessResult) this.onGuessResult(result);
+
+      // 🔑 如果是人类玩家猜的，暂停等待玩家确认弹窗后再继续
+      if (isHumanGuesser && this.game.status !== GameCore.GAME_STATUS.FINISHED) {
+        const guessInfo = {
+          guesserName: guesserBefore.name,
+          targetName: (this.game.players.find(p => p.id === targetPlayerId) || {}).name || '?',
+          position,
+          color,
+          number,
+          correct: result.correct,
+          revealedCard: result.revealedCard || null,
+          targetEliminated: result.targetEliminated || false,
+        };
+        await this._waitForPlayerGuessConfirm(guessInfo);
+      }
 
       if (this.game.status === GameCore.GAME_STATUS.FINISHED) {
         if (this.onGameOver) this.onGameOver(this.game);
@@ -317,6 +336,24 @@ const GameManager = {
       resolve();
     }
   },
+
+  /** 等待玩家确认自己的猜测结果 */
+  async _waitForPlayerGuessConfirm(guessInfo) {
+    return new Promise(resolve => {
+      this._playerConfirmResolver = resolve;
+      if (this.onPlayerGuessConfirm) this.onPlayerGuessConfirm(guessInfo);
+    });
+  },
+
+  /** 玩家确认自己猜测的结果（继续游戏流程） */
+  confirmPlayerGuess() {
+    if (this._playerConfirmResolver) {
+      const resolve = this._playerConfirmResolver;
+      this._playerConfirmResolver = null;
+      resolve();
+    }
+  },
+
   _aiRunning: false,
 
   /**
