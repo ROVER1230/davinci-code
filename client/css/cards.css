@@ -1,0 +1,955 @@
+/* ========================================
+   达芬奇密码 - 牌面样式
+   ======================================== */
+
+/* 牌面基础 */
+.game-card {
+  width: 64px;
+  height: 96px;
+  border-radius: var(--radius-sm);
+  position: relative;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  user-select: none;
+  font-family: var(--font-heading);
+  perspective: 600px;
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-gold);
+}
+
+/* 牌面内部 */
+.card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: transform 0.5s ease;
+  transform-style: preserve-3d;
+}
+
+.game-card.revealed .card-inner,
+.game-card.flipping .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.card-back {
+  background: linear-gradient(145deg, #2a1f3d, #1a1028);
+  border: 2px solid #4a3060;
+  box-shadow: inset 0 0 30px rgba(100,60,150,0.15);
+  /* 达芬奇风格花纹 */
+  background-image:
+    repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(200,168,78,0.05) 4px, rgba(200,168,78,0.05) 5px);
+}
+
+/* 黑色牌背 —— 纯黑底色，白色大字 */
+.game-card.color-black .card-back {
+  background: linear-gradient(145deg, #1a1a1f, #050508);
+  border: 2px solid #555;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
+  background-image:
+    repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 5px);
+}
+
+/* 白色牌背 —— 中灰底色，白色大字 */
+.game-card.color-white .card-back {
+  background: linear-gradient(145deg, #c8c0b0, #a09888);
+  border: 2px solid #888070;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.15);
+  background-image:
+    repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.04) 4px, rgba(255,255,255,0.04) 5px);
+}
+
+/* 牌背颜色标记 —— 大字居中 */
+.card-back-color {
+  position: absolute;
+  font-size: 1.3rem;
+  font-weight: 900;
+  z-index: 1;
+  pointer-events: none;
+  letter-spacing: 0.1em;
+}
+
+.game-card.color-black .card-back-color {
+  color: #fff;
+  font-weight: 900;
+  text-shadow: 0 0 6px rgba(0,0,0,0.5);
+}
+
+.game-card.color-white .card-back-color {
+  color: #fff;
+  font-weight: 900;
+  text-shadow: 0 0 6px rgba(0,0,0,0.5);
+}
+
+.card-back::after {
+  content: '?';
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--gold);
+  opacity: 0.4;
+  position: absolute;
+  bottom: 8px;
+}
+
+/* 有颜色标记的牌背，?号缩小 */
+.game-card.color-black .card-back::after,
+.game-card.color-white .card-back::after {
+  font-size: 0.7rem;
+  bottom: 6px;
+  opacity: 0.3;
+}
+
+/* 黑色牌正面 */
+.game-card.color-black .card-front {
+  background: linear-gradient(145deg, #2a2a2a, #111111);
+  border: 2px solid #555;
+  color: #ddd;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* 白色牌正面 */
+.game-card.color-white .card-front {
+  background: linear-gradient(145deg, #f8f4e8, #e8e0c8);
+  border: 2px solid #c8b898;
+  color: #2a2010;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* 黑色鬼牌正面 —— 与黑色数字牌一致 + 微紫边框区分 */
+.game-card.joker-black .card-front {
+  background: linear-gradient(145deg, #2a2a2a, #111111);
+  border: 2px solid #7a6a9e;
+  color: #ddd;
+  box-shadow: 0 0 12px rgba(80,60,140,0.25);
+}
+
+/* 白色鬼牌正面 —— 与白色数字牌一致 + 微紫边框区分 */
+.game-card.joker-white .card-front {
+  background: linear-gradient(145deg, #f8f4e8, #e8e0c8);
+  border: 2px solid #b8a0c8;
+  color: #2a2010;
+  box-shadow: 0 0 12px rgba(160,140,180,0.25);
+}
+
+/* 旧版通用鬼牌（兜底） */
+.game-card.joker .card-front {
+  background: linear-gradient(145deg, #4a2040, #2a1030);
+  border: 2px solid #8060a0;
+  color: #c8a0e0;
+  box-shadow: 0 0 16px rgba(120,60,180,0.3);
+}
+
+.card-number {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.card-symbol {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* 牌面颜色文字标签（黑/白） */
+.card-color-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 4px;
+  letter-spacing: 0.1em;
+  opacity: 0.85;
+}
+
+.game-card.color-black .card-color-label {
+  color: #999;
+}
+
+.game-card.color-white .card-color-label {
+  color: #6a6040;
+}
+
+/* 鬼牌的颜色标签颜色 */
+.game-card.joker-black .card-color-label {
+  color: #b8a8d8;
+}
+
+.game-card.joker-white .card-color-label {
+  color: #6a5080;
+}
+
+/* 牌面颜色徽章（已公开牌上大字显示颜色） */
+.card-color-badge {
+  position: absolute;
+  bottom: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+  background: rgba(0,0,0,0.25);
+  border-radius: 8px;
+  padding: 0px 5px;
+  line-height: 1.4;
+}
+
+.game-card.color-black .card-symbol::after {
+  content: '⚫';
+  font-size: 0.6rem;
+}
+.game-card.color-white .card-symbol::after {
+  content: '⚪';
+  font-size: 0.6rem;
+}
+
+.game-card.joker .card-number {
+  font-size: 1.2rem;
+}
+/* 黑色鬼牌符号 */
+.game-card.joker-black .card-symbol::after {
+  content: '⚫—';
+  font-size: 0.8rem;
+}
+/* 白色鬼牌符号 */
+.game-card.joker-white .card-symbol::after {
+  content: '⚪—';
+  font-size: 0.8rem;
+}
+/* 兜底 */
+.game-card.joker:not(.joker-black):not(.joker-white) .card-symbol::after {
+  content: '—';
+  font-size: 1rem;
+}
+
+/* 已公开牌 */
+.game-card.revealed {
+  opacity: 0.7;
+  cursor: default;
+}
+.game-card.revealed:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 自己的手牌（始终可见正面） */
+.game-card.own-card .card-inner {
+  transform: rotateY(180deg);
+}
+.game-card.own-card {
+  cursor: default;
+}
+.game-card.own-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 自己手中已公开的牌 —— 置灰并上移 */
+.game-card.own-revealed {
+  opacity: 0.55;
+  transform: translateY(-12px);
+  filter: grayscale(0.3);
+  transition: all var(--transition-normal);
+}
+.game-card.own-revealed:hover {
+  transform: translateY(-12px);
+  box-shadow: none;
+}
+
+/* 已公开标记 */
+.revealed-badge {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  color: var(--gold-dark);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(200,168,78,0.2);
+  border-radius: 10px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  z-index: 1;
+  letter-spacing: 0.05em;
+}
+
+/* 卡片旋转180度显示 */
+.card-front {
+  transform: rotateY(180deg);
+}
+
+/* 可选择的对手牌 */
+.game-card.selectable-target {
+  cursor: pointer;
+}
+.game-card.selectable-target:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-gold);
+  cursor: pointer;
+}
+
+/* ============ 牌序列容器 ============ */
+.card-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-md);
+  min-height: 120px;
+  flex-wrap: wrap;
+}
+
+.card-row-label {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  margin-right: var(--space-md);
+}
+
+/* ============ 对手牌区 ============ */
+.opponent-section {
+  margin-bottom: var(--space-lg);
+}
+
+.opponent-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.opponent-name {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.opponent-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(200,168,78,0.15);
+  color: var(--gold);
+}
+
+.opponent-badge.ai { background: rgba(80,128,192,0.15); color: var(--accent-blue); }
+.opponent-badge.eliminated { background: rgba(192,80,80,0.15); color: var(--accent-red); }
+.opponent-badge.active-turn { background: rgba(80,160,96,0.2); color: var(--accent-green); }
+
+/* ============ 自己的手牌区 ============ */
+.my-hand-section {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(200,168,78,0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-top: auto;
+}
+
+.my-hand-section .section-label {
+  font-family: var(--font-heading);
+  color: var(--gold);
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+/* ============ 牌堆显示 ============ */
+.draw-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  transition: all var(--transition-normal);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+.draw-pile.pile-clickable {
+  cursor: pointer;
+  animation: pileGlow 1.5s ease infinite;
+}
+
+.draw-pile.pile-clickable:hover {
+  background: rgba(200,168,78,0.1);
+  transform: scale(1.05);
+}
+
+@keyframes pileGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(200,168,78,0.3); }
+  50% { box-shadow: 0 0 24px rgba(200,168,78,0.7); }
+}
+
+.pile-stack {
+  width: 64px;
+  height: 96px;
+  position: relative;
+}
+
+.pile-card {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #2a1f3d, #1a1028);
+  border: 2px solid #4a3060;
+  border-radius: var(--radius-sm);
+  background-image:
+    repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(200,168,78,0.05) 4px, rgba(200,168,78,0.05) 5px);
+}
+
+.pile-card:nth-child(1) { top: 0; left: 0; }
+.pile-card:nth-child(2) { top: 2px; left: 2px; }
+.pile-card:nth-child(3) { top: 4px; left: 4px; }
+
+.pile-count {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ============ 当前回合指示 ============ */
+.turn-banner {
+  text-align: center;
+  padding: var(--space-md);
+  background: linear-gradient(90deg, transparent, rgba(200,168,78,0.1), transparent);
+  border-top: 1px solid rgba(200,168,78,0.15);
+  border-bottom: 1px solid rgba(200,168,78,0.15);
+  margin: var(--space-md) 0;
+}
+
+.turn-banner .banner-text {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--gold);
+}
+
+.turn-banner .banner-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.turn-banner.my-turn {
+  background: linear-gradient(90deg, transparent, rgba(80,160,96,0.15), transparent);
+  border-color: rgba(80,160,96,0.25);
+}
+.turn-banner.my-turn .banner-text {
+  color: var(--accent-green);
+}
+
+.turn-banner.waiting {
+  background: linear-gradient(90deg, transparent, rgba(160,140,100,0.08), transparent);
+}
+
+/* ============ 猜测对话框 ============ */
+.guess-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.guess-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.guess-form label {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.color-selector {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.color-option {
+  flex: 1;
+  padding: var(--space-md);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.color-option.black {
+  background: var(--card-black-bg);
+  color: #ddd;
+}
+.color-option.white {
+  background: var(--card-white-bg);
+  color: #2a2010;
+}
+
+.color-option.selected {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-gold);
+}
+
+.color-option:hover {
+  border-color: rgba(200,168,78,0.5);
+}
+
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-sm);
+}
+
+.number-btn {
+  aspect-ratio: 1;
+  border: 1px solid var(--gold-dark);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.number-btn:not(.disabled):hover {
+  background: var(--gold-dark);
+  color: white;
+}
+
+.number-btn.selected {
+  background: var(--gold);
+  color: #1a1410;
+  border-color: var(--gold);
+  box-shadow: var(--shadow-gold);
+}
+
+.number-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.number-btn.joker-btn {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #4a2040, #2a1030);
+  border-color: #8060a0;
+  color: #c8a0e0;
+}
+
+.number-btn.joker-btn.selected {
+  background: linear-gradient(135deg, #6a3060, #4a2050);
+  box-shadow: 0 0 16px rgba(120,60,180,0.4);
+}
+
+/* ============ 目标选择 ============ */
+.target-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.target-player-card {
+  padding: var(--space-md);
+  border: 1px solid rgba(200,168,78,0.12);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.target-player-card:hover {
+  border-color: var(--gold);
+}
+
+.target-player-card.selected {
+  border-color: var(--gold);
+  background: rgba(200,168,78,0.08);
+}
+
+.target-position-btns {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.position-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.position-dot:hover { border-color: var(--gold); }
+.position-dot.selected {
+  border-color: var(--gold);
+  background: rgba(200,168,78,0.2);
+  box-shadow: var(--shadow-gold);
+}
+.position-dot.revealed {
+  opacity: 0.3;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* ============ 鬼牌放置 ============ */
+.joker-slots {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--space-md) 0;
+}
+
+.joker-slot {
+  width: 48px;
+  height: 72px;
+  border: 2px dashed var(--text-muted);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.joker-slot:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,78,0.08);
+}
+
+.joker-slot.between {
+  width: 24px;
+  border: 2px dotted var(--text-muted);
+  font-size: 0.7rem;
+  color: var(--gold);
+}
+
+/* ============ 计时器 ============ */
+.timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.timer.warning {
+  color: var(--gold);
+  animation: pulse 1s ease infinite;
+}
+
+.timer.danger {
+  color: var(--accent-red);
+  animation: pulse 0.5s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ============ 摸到的牌展示区 ============ */
+.drawn-card-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-sm) 0;
+  margin-bottom: var(--space-sm);
+}
+
+.drawn-card-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: rgba(200,168,78,0.08);
+  border: 1px dashed var(--gold);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-lg);
+  animation: drawnCardSlideIn 0.4s ease;
+}
+
+@keyframes drawnCardSlideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.drawn-badge {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  color: var(--gold);
+  background: rgba(200,168,78,0.12);
+  border: 1px solid rgba(200,168,78,0.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  white-space: nowrap;
+  animation: pulse 1.5s ease infinite;
+}
+
+.drawn-card-fresh {
+  animation: cardDraw 0.5s ease;
+  box-shadow: 0 0 16px rgba(200,168,78,0.5), 0 0 32px rgba(200,168,78,0.2);
+}
+
+.drawn-card-label {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+/* ============ 动画 ============ */
+@keyframes cardDraw {
+  from { transform: translateY(-40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes cardFlip {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(180deg); }
+}
+
+@keyframes cardReveal {
+  0% { transform: scale(1); box-shadow: none; }
+  30% { transform: scale(1.15); box-shadow: var(--shadow-gold); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+
+@keyframes highlightPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200,168,78,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(200,168,78,0); }
+}
+
+.card-drawing {
+  animation: cardDraw 0.4s ease;
+}
+
+.card-flipping {
+  animation: cardFlip 0.6s ease;
+}
+
+.card-revealing {
+  animation: cardReveal 0.5s ease;
+}
+
+.card-highlight {
+  animation: highlightPulse 1.5s ease;
+}
+
+/* ============ 游戏信息栏 ============ */
+.game-info-bar {
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-sm) 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.game-info-bar .info-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.game-info-bar .info-value {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* ============ 响应的牌尺寸 ============ */
+@media (max-width: 600px) {
+  .game-card {
+    width: 48px;
+    height: 72px;
+  }
+  .card-number {
+    font-size: 1.2rem;
+  }
+  .pile-stack {
+    width: 48px;
+    height: 72px;
+  }
+  .number-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .game-card {
+    width: 40px;
+    height: 60px;
+  }
+  .card-number {
+    font-size: 1rem;
+  }
+}
+
+/* ============ 底部猜牌面板 ============ */
+.guess-panel {
+  background: var(--bg-modal);
+  border: 1px solid rgba(200,168,78,0.25);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-sm);
+  animation: slideUpPanel 0.3s ease;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+
+@keyframes slideUpPanel {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.guess-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--gold);
+}
+
+.guess-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guess-panel-colors {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.color-pick-btn {
+  flex: 1;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+}
+
+.color-pick-btn.black {
+  background: var(--card-black-bg);
+  color: #ddd;
+}
+.color-pick-btn.white {
+  background: var(--card-white-bg);
+  color: #2a2010;
+}
+.color-pick-btn:hover {
+  border-color: var(--gold-light);
+}
+.color-pick-btn.selected {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-gold);
+  transform: scale(1.03);
+}
+
+.guess-panel-numbers {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.num-pick-btn {
+  padding: 4px 2px;
+  min-height: 28px;
+  border: 1px solid var(--gold-dark);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+
+.num-pick-btn:hover:not(.disabled) {
+  background: var(--gold-dark);
+  color: white;
+}
+.num-pick-btn.selected {
+  background: var(--gold);
+  color: #1a1410;
+  border-color: var(--gold);
+  box-shadow: var(--shadow-gold);
+}
+.num-pick-btn.disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.num-pick-btn.joker-pick {
+  background: linear-gradient(135deg, #4a2040, #2a1030);
+  border-color: #8060a0;
+  color: #c8a0e0;
+  grid-column: span 2;
+}
+.num-pick-btn.joker-pick.selected {
+  background: linear-gradient(135deg, #6a3060, #4a2050);
+  box-shadow: 0 0 16px rgba(120,60,180,0.4);
+}
+
+/* 手中已有的牌 —— 淡金提示但可点击（误导策略） */
+.num-pick-btn.owned-hint {
+  background: rgba(200,168,78,0.12);
+  border-color: rgba(200,168,78,0.3);
+  color: var(--gold-dark);
+}
+.num-pick-btn.owned-hint small {
+  font-size: 0.55rem;
+  opacity: 0.7;
+}
+
+.guess-panel-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+/* 对手牌被选中时的样式 */
+.game-card.target-selected {
+  box-shadow: 0 0 16px rgba(200,168,78,0.7), 0 0 32px rgba(200,168,78,0.3) !important;
+  border: 2px solid var(--gold) !important;
+  border-radius: var(--radius-sm);
+  animation: targetPulse 1s ease infinite;
+  transform: translateY(-6px);
+}
+
+@keyframes targetPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(200,168,78,0.7), 0 0 32px rgba(200,168,78,0.3); }
+  50% { box-shadow: 0 0 24px rgba(200,168,78,0.9), 0 0 48px rgba(200,168,78,0.5); }
+}
