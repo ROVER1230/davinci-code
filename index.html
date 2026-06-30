@@ -1,0 +1,2335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>达芬奇密码 - 在线桌游</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/cards.css">
+  <style>
+    /* 额外页面级样式 */
+    .screen { display: block; }
+    .screen.hidden { display: none !important; }
+
+    /* 设置表单 */
+    .setup-form {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .setup-form .form-group {
+      margin-bottom: var(--space-lg);
+    }
+
+    .setup-form label {
+      display: block;
+      font-family: var(--font-heading);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-sm);
+      font-size: 0.9rem;
+    }
+
+    .setup-form input[type="text"],
+    .setup-form select {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid rgba(200,168,78,0.2);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-family: var(--font-body);
+      transition: border-color var(--transition-fast);
+    }
+
+    .setup-form input:focus,
+    .setup-form select:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .setup-form select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c8a84e' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    .player-count-selector {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .player-count-btn {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid rgba(200,168,78,0.2);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      cursor: pointer;
+      text-align: center;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+    .player-count-btn:hover { border-color: var(--gold); }
+    .player-count-btn.selected {
+      border-color: var(--gold);
+      background: rgba(200,168,78,0.12);
+      box-shadow: var(--shadow-gold);
+    }
+
+    /* 难度选择 */
+    .difficulty-selector {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--space-sm);
+    }
+
+    .difficulty-card {
+      padding: var(--space-md);
+      border: 1px solid rgba(200,168,78,0.15);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+      position: relative;
+    }
+
+    .difficulty-card:hover:not(.locked) {
+      border-color: var(--gold);
+      transform: translateY(-2px);
+    }
+
+    .difficulty-card.selected {
+      border-color: var(--gold);
+      background: rgba(200,168,78,0.12);
+      box-shadow: var(--shadow-gold);
+    }
+
+    .difficulty-card.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+
+    .difficulty-card .diff-name {
+      font-family: var(--font-heading);
+      font-size: 0.9rem;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+
+    .difficulty-card .diff-stars {
+      font-size: 0.7rem;
+      color: var(--gold-dark);
+    }
+
+    .difficulty-card .lock-icon {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.8rem;
+    }
+
+    /* 游戏布局 */
+    .game-layout {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+      flex: 1;
+      position: relative;
+    }
+
+    .game-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-sm) var(--space-md);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(200,168,78,0.1);
+    }
+
+    .game-main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+      overflow-y: auto;
+    }
+
+    .game-bottom-bar {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: center;
+      padding: var(--space-md);
+    }
+
+    /* 弹窗内玩家选择 */
+    .target-selector {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .target-player {
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid rgba(200,168,78,0.12);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .target-player:hover { border-color: var(--gold); }
+    .target-player.chosen { border-color: var(--gold); background: rgba(200,168,78,0.08); }
+
+    /* 本地多人过渡屏 */
+    .switch-screen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10,8,5,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      gap: var(--space-xl);
+    }
+    .switch-screen h2 {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      color: var(--gold);
+    }
+    .switch-screen .next-player {
+      font-size: 1.5rem;
+      color: var(--text-primary);
+    }
+
+    /* 规则页 */
+    .rules-content {
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+    .rules-content h2 {
+      font-family: var(--font-heading);
+      color: var(--gold);
+      margin: var(--space-xl) 0 var(--space-md);
+      padding-bottom: var(--space-sm);
+      border-bottom: 1px solid rgba(200,168,78,0.2);
+    }
+    .rules-content h3 {
+      font-family: var(--font-heading);
+      color: var(--text-primary);
+      margin: var(--space-lg) 0 var(--space-sm);
+    }
+    .rules-content p, .rules-content li {
+      color: var(--text-secondary);
+      margin-bottom: var(--space-sm);
+    }
+    .rules-content ul, .rules-content ol {
+      padding-left: var(--space-xl);
+      margin-bottom: var(--space-md);
+    }
+    .rules-content .highlight {
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .rules-content .rule-box {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(200,168,78,0.15);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+      margin: var(--space-lg) 0;
+    }
+    .rules-content .rule-box h3 {
+      margin-top: 0;
+    }
+
+    /* 教程覆盖层 */
+    .tutorial-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 1500;
+      pointer-events: none;
+    }
+    .tutorial-spotlight {
+      position: absolute;
+      border-radius: var(--radius-md);
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.7), 0 0 24px rgba(200,168,78,0.3);
+      transition: all 0.4s ease;
+    }
+    .tutorial-tooltip {
+      position: absolute;
+      background: var(--bg-modal);
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      max-width: 320px;
+      box-shadow: var(--shadow-strong);
+      pointer-events: auto;
+    }
+    .tutorial-tooltip h3 {
+      color: var(--gold);
+      margin-bottom: var(--space-sm);
+    }
+    .tutorial-tooltip p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: var(--space-md);
+    }
+    .tutorial-dots {
+      display: flex;
+      gap: var(--space-xs);
+      justify-content: center;
+      margin-top: var(--space-sm);
+    }
+    .tutorial-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .tutorial-dot.active {
+      background: var(--gold);
+    }
+
+    /* 结果页 */
+    .result-container {
+      text-align: center;
+      padding: var(--space-2xl);
+    }
+    .result-container .winner-icon {
+      font-size: 4rem;
+      margin-bottom: var(--space-md);
+    }
+    .result-container h2 {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      color: var(--gold);
+      margin-bottom: var(--space-md);
+    }
+    .result-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-md);
+      margin: var(--space-xl) 0;
+    }
+    .result-stat {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(200,168,78,0.12);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+    }
+    .result-stat .stat-value {
+      font-size: 1.8rem;
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .result-stat .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* AI猜测确认弹窗 */
+    .ai-guess-modal {
+      text-align: center;
+      padding: var(--space-md);
+    }
+    .ai-guess-modal .guesser-name {
+      font-family: var(--font-heading);
+      font-size: 1.2rem;
+      color: var(--accent-blue);
+      margin-bottom: var(--space-sm);
+    }
+    .ai-guess-modal .guess-target {
+      font-size: 1rem;
+      color: var(--text-primary);
+      margin-bottom: var(--space-xs);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: var(--space-sm) var(--space-md);
+      display: inline-block;
+    }
+    .ai-guess-modal .guess-content {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin: var(--space-md) 0;
+      padding: var(--space-md);
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      border: 2px solid rgba(200,168,78,0.3);
+    }
+    .ai-guess-modal .guess-content.correct-guess {
+      border-color: var(--accent-green);
+      background: rgba(80,160,96,0.1);
+    }
+    .ai-guess-modal .guess-content.wrong-guess {
+      border-color: var(--accent-red);
+      background: rgba(192,80,80,0.1);
+    }
+    .ai-guess-modal .result-icon {
+      font-size: 2.5rem;
+      margin-bottom: var(--space-sm);
+    }
+    .ai-guess-modal .revealed-info {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: var(--space-sm);
+      padding: var(--space-sm);
+      background: rgba(200,168,78,0.08);
+      border-radius: var(--radius-sm);
+    }
+
+    /* 硬币动画 */
+    .coin-flip-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10,8,5,0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      gap: var(--space-xl);
+    }
+    .coin {
+      width: 120px;
+      height: 120px;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: coinFlip 2s ease-out forwards;
+    }
+    .coin-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 700;
+      border: 4px solid;
+    }
+    .coin-front {
+      background: linear-gradient(135deg, #f5e6c8, #c8a84e);
+      border-color: #a08030;
+      color: #6a4a10;
+      transform: rotateY(0deg);
+    }
+    .coin-back {
+      background: linear-gradient(135deg, #c8a84e, #8a6a20);
+      border-color: #6a4a10;
+      color: #f5e6c8;
+      transform: rotateY(180deg);
+    }
+    @keyframes coinFlip {
+      0%   { transform: rotateY(0deg) scale(0.3); }
+      15%  { transform: rotateY(360deg) scale(1); }
+      30%  { transform: rotateY(720deg) scale(1); }
+      50%  { transform: rotateY(1080deg) scale(1); }
+      70%  { transform: rotateY(1440deg) scale(1); }
+      85%  { transform: rotateY(1620deg) scale(1); }
+      100% { transform: rotateY(1800deg) scale(1); }
+    }
+    .coin-result {
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      color: var(--gold);
+      text-align: center;
+      animation: fadeInUp 0.5s ease 2.2s both;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 历史记录面板 —— 浮层，不挤压游戏布局 */
+    .history-panel {
+      position: fixed;
+      top: 80px;
+      right: 16px;
+      width: 340px;
+      max-height: 55vh;
+      background: rgba(20,16,10,0.97);
+      border: 1px solid rgba(200,168,78,0.3);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      animation: slideDown 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+    .history-panel.hidden { display: none; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid rgba(200,168,78,0.15);
+      font-family: var(--font-heading);
+      font-size: 0.95rem;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .history-list {
+      overflow-y: auto;
+      padding: var(--space-xs) var(--space-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+      min-height: 0;
+    }
+    .history-entry {
+      font-size: 0.84rem;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.03);
+      border-left: 2px solid transparent;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .history-entry.type-guess-correct { border-left-color: var(--accent-green); }
+    .history-entry.type-guess-wrong { border-left-color: var(--accent-red); }
+    .history-entry.type-draw { border-left-color: var(--accent-blue); }
+    .history-entry.type-eliminated { border-left-color: #ff4444; background: rgba(255,0,0,0.06); }
+  </style>
+</head>
+<body>
+  <!-- Toast容器 -->
+  <div class="toast-container"></div>
+
+  <!-- 背景音乐播放器 -->
+  <div class="music-player" id="music-player" title="背景音乐">
+    <button class="music-btn" id="btn-music-toggle" onclick="toggleMusic()">🔇</button>
+    <input type="range" class="music-volume" id="music-volume" min="0" max="100" value="30"
+           oninput="setMusicVolume(this.value)" title="音量">
+  </div>
+
+  <div class="app-container">
+    <!-- ====== 首页 ====== -->
+    <div class="screen" id="screen-home">
+      <div class="app-header">
+        <h1>🔐 达芬奇密码</h1>
+        <p class="subtitle">D A · V I N C I · C O D E</p>
+      </div>
+
+      <div class="app-content">
+        <div class="mode-grid">
+          <!-- AI对战 -->
+          <div class="mode-card" onclick="showSetup('ai')">
+            <div class="mode-icon">🤖</div>
+            <h3>人机对战</h3>
+            <p>与电脑AI对战，5个难度等你挑战</p>
+          </div>
+
+          <!-- 本地多人 -->
+          <div class="mode-card" onclick="showSetup('local')">
+            <div class="mode-icon">👥</div>
+            <h3>本地多人</h3>
+            <p>同一设备轮流操作，适合朋友聚会</p>
+          </div>
+
+          <!-- 联机对战 -->
+          <div class="mode-card" onclick="showOnlineComing()">
+            <div class="mode-icon">🌐</div>
+            <h3>联机对战</h3>
+            <p>在线匹配真实玩家 · 段位排行</p>
+            <span style="display:inline-block;margin-top:8px;padding:2px 10px;background:rgba(200,168,78,0.15);border-radius:12px;font-size:0.75rem;color:var(--gold)">即将开放</span>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-top:var(--space-lg);display:flex;gap:var(--space-md);justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="showRules()">📖 游戏规则</button>
+          <button class="btn btn-ghost btn-sm" onclick="startTutorial()">🎓 新手教程</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 规则页 ====== -->
+    <div class="screen hidden" id="screen-rules">
+      <div class="app-header">
+        <h1>📖 游戏规则</h1>
+        <p class="subtitle">达芬奇密码 · 完整规则说明</p>
+      </div>
+
+      <div class="app-content">
+        <div class="rules-content">
+          <div class="rule-box">
+            <h3>🎯 游戏目标</h3>
+            <p>在你的所有牌被对手猜出之前，<span class="highlight">率先猜出所有对手的牌</span>。成为唯一还有未公开牌的玩家即可获胜。</p>
+          </div>
+
+          <h2>一、游戏组件</h2>
+          <ul>
+            <li><span class="highlight">26张牌</span>：黑色数字牌12张（0-11）+ 白色数字牌12张（0-11）+ 鬼牌2张（黑白各1张）</li>
+            <li>每张牌都有黑色或白色标识，数字从0到11</li>
+            <li>鬼牌标注「—」，可代表任意数字</li>
+          </ul>
+
+          <h2>二、游戏准备</h2>
+          <ol>
+            <li>将所有26张牌面朝下洗匀</li>
+            <li><span class="highlight">2-3人游戏</span>：每人摸 <span class="highlight">4张</span> 牌</li>
+            <li><span class="highlight">4人游戏</span>：每人摸 <span class="highlight">3张</span> 牌</li>
+            <li>将手牌立起面向自己，<span class="highlight">按数字从小到大从左到右排列</span></li>
+            <li><span class="highlight">相同数字时：黑色放在白色左边</span></li>
+            <li>鬼牌可放在任意位置</li>
+          </ol>
+
+          <h2>三、回合流程</h2>
+          <div class="rule-box">
+            <h3>第一步：摸牌</h3>
+            <p>从牌堆摸1张牌，<span class="highlight">只有你自己能看</span>到这张牌。</p>
+
+            <h3>第二步：猜测</h3>
+            <p>选择任意对手的任意一张未公开牌，说出你猜测的<span class="highlight">颜色和数字</span>（例如：「黑色5」或「白色鬼牌」）。</p>
+            <p>对手必须如实回答 <span class="highlight">「对」或「错」</span>。</p>
+
+            <h3>猜对时：</h3>
+            <ul>
+              <li>对手将该牌<span class="highlight">放倒公开</span></li>
+              <li>你可以<span class="highlight">选择继续猜</span>（不用再摸牌）</li>
+              <li>或者<span class="highlight">选择停止</span>：把摸到的牌秘密放入你的牌列中</li>
+            </ul>
+
+            <h3>猜错时：</h3>
+            <ul>
+              <li>你必须把刚摸到的牌<span class="highlight">公开</span>，并按数字大小插入你的牌列中</li>
+              <li>你的回合<span class="highlight">立即结束</span></li>
+              <li>如果牌堆已空你没摸到牌，需要公开自己一张未公开的牌</li>
+            </ul>
+          </div>
+
+          <h2>四、鬼牌规则</h2>
+          <ul>
+            <li>鬼牌（—）可以放在手牌中的<span class="highlight">任意位置</span></li>
+            <li>放置后不能移动</li>
+            <li>猜鬼牌时必须直接说出<span class="highlight">「黑色鬼牌」或「白色鬼牌」</span></li>
+          </ul>
+
+          <h2>五、胜利条件</h2>
+          <p>当场上<span class="highlight">只有一位玩家还有未公开的牌</span>时，该玩家获胜。手牌全部被猜出的玩家淘汰出局。</p>
+
+          <h2>六、重要注意事项</h2>
+          <ul>
+            <li>不能用纸笔记录，全靠<span class="highlight">记忆和推理</span></li>
+            <li>不能讨论推理过程</li>
+            <li>只能猜自己<span class="highlight">手中没有</span>的牌</li>
+            <li>牌堆耗尽后不摸牌，直接猜测</li>
+            <li>手牌必须始终保持从小到大排列</li>
+          </ul>
+
+          <h2>七、策略技巧</h2>
+          <ul>
+            <li>开局多收集信息，不要急于连续进攻</li>
+            <li>记住对手猜过的牌，反推对方手牌</li>
+            <li>鬼牌不要放在极值两端，容易暴露</li>
+            <li>后期摸自己已有颜色较多的牌，可掌控更多信息</li>
+          </ul>
+        </div>
+
+        <div style="text-align:center;margin:var(--space-xl) 0;">
+          <button class="btn btn-primary" onclick="showHome()">返回首页</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 设置页 ====== -->
+    <div class="screen hidden" id="screen-setup">
+      <div class="app-header">
+        <h1 id="setup-title">游戏设置</h1>
+        <p class="subtitle" id="setup-subtitle"></p>
+      </div>
+
+      <div class="app-content">
+        <div class="card-panel setup-form">
+          <!-- 模式选择（人类玩家） -->
+          <div id="setup-ai" class="hidden">
+            <div class="form-group">
+              <label>你的名字</label>
+              <input type="text" id="ai-player-name" value="玩家" maxlength="10">
+            </div>
+            <div class="form-group">
+              <label>对手人数</label>
+              <div class="player-count-selector" id="ai-player-count">
+                <div class="player-count-btn" data-count="2" onclick="selectPlayerCount(this, 'ai')">1个对手<br><small style="color:var(--text-muted)">共2人</small></div>
+                <div class="player-count-btn selected" data-count="3" onclick="selectPlayerCount(this, 'ai')">2个对手<br><small style="color:var(--text-muted)">共3人</small></div>
+                <div class="player-count-btn" data-count="4" onclick="selectPlayerCount(this, 'ai')">3个对手<br><small style="color:var(--text-muted)">共4人</small></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>AI难度 <span style="color:var(--text-muted)">（赢得足够局数解锁更高难度）</span></label>
+              <div class="difficulty-selector" id="diff-selector">
+                <!-- 动态生成 -->
+              </div>
+            </div>
+          </div>
+
+          <div id="setup-local" class="hidden">
+            <div class="form-group">
+              <label>玩家人数</label>
+              <div class="player-count-selector" id="local-player-count">
+                <div class="player-count-btn selected" data-count="2" onclick="selectPlayerCount(this, 'local')">2人</div>
+                <div class="player-count-btn" data-count="3" onclick="selectPlayerCount(this, 'local')">3人</div>
+                <div class="player-count-btn" data-count="4" onclick="selectPlayerCount(this, 'local')">4人</div>
+              </div>
+            </div>
+            <div id="local-names"></div>
+          </div>
+
+          <div style="display:flex;gap:var(--space-md);justify-content:center;margin-top:var(--space-xl);">
+            <button class="btn btn-secondary" onclick="showHome()">返回</button>
+            <button class="btn btn-primary btn-lg" id="btn-start-game" onclick="startGame()">🎮 开始游戏</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 游戏页 ====== -->
+    <div class="screen hidden" id="screen-game">
+      <div class="game-layout">
+        <!-- 顶部信息栏 -->
+        <div class="game-top-bar">
+          <div class="game-info-bar">
+            <span class="info-item">🔄 <span class="info-value" id="info-turn">第1回合</span></span>
+            <span class="info-item">🎴 <span class="info-value" id="info-deck">0</span>张</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-sm);">
+            <span class="info-item" style="font-size:0.8rem;color:var(--text-muted)"><span id="info-mode">—</span></span>
+            <button class="btn btn-ghost btn-sm" id="btn-toggle-history" onclick="toggleHistory()" title="历史记录">📜</button>
+            <button class="btn btn-ghost btn-sm" onclick="confirmQuit()">✕ 退出</button>
+          </div>
+        </div>
+
+        <!-- 历史记录面板 -->
+        <div class="history-panel hidden" id="history-panel">
+          <div class="history-header">
+            <span>📜 对局记录</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleHistory()">✕</button>
+          </div>
+          <div class="history-list" id="history-list"></div>
+        </div>
+
+        <!-- 回合提示 -->
+        <div id="turn-banner" class="turn-banner">
+          <div class="banner-text">准备开始...</div>
+          <div class="banner-sub"></div>
+        </div>
+
+        <!-- 游戏主体 -->
+        <div class="game-main-area">
+          <!-- 对手区域 -->
+          <div id="opponents-area"></div>
+        </div>
+
+        <!-- 猜牌底部面板 -->
+        <div class="guess-panel hidden" id="guess-panel">
+          <div class="guess-panel-header">
+            <span id="guess-panel-title">🎯 猜测对手的牌</span>
+            <span id="guess-panel-target" style="font-size:0.85rem;color:var(--text-muted)">请点击对手的牌选择目标</span>
+          </div>
+          <div class="guess-panel-body">
+            <div class="guess-panel-colors">
+              <button class="color-pick-btn black" id="pick-color-black" onclick="pickGuessColor('black')">⚫ 黑色</button>
+              <button class="color-pick-btn white" id="pick-color-white" onclick="pickGuessColor('white')">⚪ 白色</button>
+            </div>
+            <div class="guess-panel-numbers" id="guess-panel-numbers">
+              <!-- 动态生成 0-11 + 鬼牌 -->
+            </div>
+          </div>
+          <div class="guess-panel-actions">
+            <button class="btn btn-secondary btn-sm" onclick="resetGuessSelection()">🔄 重新选择</button>
+            <button class="btn btn-primary" id="btn-submit-guess" disabled onclick="submitGuessFromPanel()">✅ 确认猜测</button>
+          </div>
+        </div>
+
+        <!-- 自己的手牌 -->
+        <div class="my-hand-section">
+          <div class="section-label" id="my-hand-label">我的手牌</div>
+          <div class="card-row" id="my-hand"></div>
+          <!-- 摸到的牌展示区 -->
+          <div id="drawn-card-area" class="drawn-card-area" style="display:none;"></div>
+          <div style="display:flex;gap:var(--space-md);align-items:center;justify-content:space-between;">
+            <div id="draw-pile-area"></div>
+            <div id="game-actions-area"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 本地多人切换屏 ====== -->
+    <div class="switch-screen hidden" id="switch-screen">
+      <div>🔒</div>
+      <h2>请将设备交给</h2>
+      <div class="next-player" id="switch-player-name"></div>
+      <p style="color:var(--text-muted)">点击确认后显示你的手牌</p>
+      <button class="btn btn-primary btn-lg" id="btn-switch-confirm" onclick="confirmSwitchPlayer()">
+        👀 我是 <span id="switch-confirm-name"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ====== 弹窗容器 ====== -->
+  <div id="modal-container"></div>
+
+  <!-- ====== JavaScript ====== -->
+  <script src="js/core/game-core.js"></script>
+  <script src="js/ai/deduction-engine.js"></script>
+  <script src="js/ai/ai-player.js"></script>
+  <script src="js/game/game-renderer.js"></script>
+  <script src="js/game/game-manager.js"></script>
+
+  <script>
+  // ============ 全局状态 ============
+  let currentMode = null;       // 'ai' | 'local'
+  let currentSetup = {};        // 当前设置
+
+  // ============ 初始化 ============
+  document.addEventListener('DOMContentLoaded', () => {
+    showHome();
+    // 检查是否有未解锁难度需要更新
+    updateDifficultySelector();
+  });
+
+  // ============ 页面切换 ============
+  function showHome() {
+    hideAllScreens();
+    document.getElementById('screen-home').classList.remove('hidden');
+  }
+
+  function showRules() {
+    hideAllScreens();
+    document.getElementById('screen-rules').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
+  function showSetup(mode) {
+    hideAllScreens();
+    currentMode = mode;
+    document.getElementById('screen-setup').classList.remove('hidden');
+
+    // 根据模式显示不同设置
+    document.getElementById('setup-ai').classList.add('hidden');
+    document.getElementById('setup-local').classList.add('hidden');
+
+    if (mode === 'ai') {
+      document.getElementById('setup-ai').classList.remove('hidden');
+      document.getElementById('setup-title').textContent = '人机对战设置';
+      document.getElementById('setup-subtitle').textContent = '选择难度，智取AI';
+      currentSetup.playerCount = 3; // 默认3人(1人+2AI)
+      updateDifficultySelector();
+    } else if (mode === 'local') {
+      document.getElementById('setup-local').classList.remove('hidden');
+      document.getElementById('setup-title').textContent = '本地多人设置';
+      document.getElementById('setup-subtitle').textContent = '设置玩家姓名';
+      currentSetup.playerCount = 2;
+      updateLocalNames();
+    }
+  }
+
+  function showOnlineComing() {
+    showToast('联机对战即将开放，敬请期待！', 'warning');
+  }
+
+  function hideAllScreens() {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById('switch-screen').classList.add('hidden');
+  }
+
+  // ============ 设置页逻辑 ============
+  function selectPlayerCount(btn, mode) {
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.player-count-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    currentSetup.playerCount = parseInt(btn.dataset.count);
+
+    if (mode === 'local') {
+      updateLocalNames();
+    }
+  }
+
+  // AI难度选择
+  function updateDifficultySelector() {
+    const container = document.getElementById('diff-selector');
+    if (!container) return;
+
+    // 默认选中已解锁的最高难度
+    const unlocked = getUnlockedDifficulty();
+    currentSetup.aiDifficulty = currentSetup.aiDifficulty || unlocked;
+
+    // 读取各难度已赢局数
+    const progress = getAIProgress();
+    const wins = progress.wins || {};
+
+    const difficulties = [
+      { level: 1, name: '新手', stars: '⭐' },
+      { level: 2, name: '入门', stars: '⭐⭐' },
+      { level: 3, name: '进阶', stars: '⭐⭐⭐' },
+      { level: 4, name: '高手', stars: '⭐⭐⭐⭐' },
+      { level: 5, name: '大师', stars: '⭐⭐⭐⭐⭐' },
+    ];
+
+    container.innerHTML = difficulties.map(d => {
+      const isLocked = d.level > unlocked;
+      const isSelected = d.level === currentSetup.aiDifficulty;
+      const cls = [
+        'difficulty-card',
+        isLocked ? 'locked' : '',
+        isSelected ? 'selected' : '',
+      ].filter(Boolean).join(' ');
+
+      // 计算还需赢几局
+      let statusText = '';
+      if (d.level === 1) {
+        statusText = '默认解锁';
+      } else if (!isLocked) {
+        statusText = '✅ 已解锁';
+      } else {
+        const winsNeeded = (d.level - 1) * 5;
+        const currentWins = wins[d.level - 1] || 0;
+        const remaining = Math.max(0, winsNeeded - currentWins);
+        statusText = `🔒 还需 <strong>${remaining}</strong> 胜`;
+      }
+
+      return `
+        <div class="${cls}" onclick="${isLocked ? '' : `selectDifficulty(${d.level})`}" data-level="${d.level}">
+          ${isLocked ? '<span class="lock-icon">🔒</span>' : ''}
+          <div class="diff-name">${d.name}</div>
+          <div class="diff-stars">${d.stars}</div>
+          <div style="font-size:0.65rem;color:${isLocked ? 'var(--accent-red)' : 'var(--accent-green)'};margin-top:2px;">${statusText}</div>
+        </div>`;
+    }).join('');
+  }
+
+  /** 获取AI进度数据 */
+  function getAIProgress() {
+    try {
+      return JSON.parse(localStorage.getItem('davinci_ai_progress') || '{}');
+    } catch { return {}; }
+  }
+
+  function selectDifficulty(level) {
+    currentSetup.aiDifficulty = level;
+    updateDifficultySelector();
+  }
+
+  function getUnlockedDifficulty() {
+    try {
+      const data = JSON.parse(localStorage.getItem('davinci_ai_progress') || '{}');
+      return data.maxUnlocked || 1;
+    } catch { return 1; }
+  }
+
+  function unlockDifficulty(level) {
+    const data = JSON.parse(localStorage.getItem('davinci_ai_progress') || '{}');
+    if (level > (data.maxUnlocked || 1)) {
+      data.maxUnlocked = level;
+      // 记录每个难度的胜场
+      if (!data.wins) data.wins = {};
+      if (!data.wins[level]) data.wins[level] = 0;
+      localStorage.setItem('davinci_ai_progress', JSON.stringify(data));
+    }
+  }
+
+  function recordAIWin(difficulty) {
+    const data = JSON.parse(localStorage.getItem('davinci_ai_progress') || '{}');
+    if (!data.wins) data.wins = {};
+    data.wins[difficulty] = (data.wins[difficulty] || 0) + 1;
+
+    // 检查是否解锁下一难度（需要赢5局）
+    const winsNeeded = difficulty * 5;
+    if (data.wins[difficulty] >= winsNeeded && difficulty < 5) {
+      if (!data.maxUnlocked || data.maxUnlocked <= difficulty) {
+        data.maxUnlocked = difficulty + 1;
+        showToast(`🎉 解锁了新难度：${AIPlayer.getDifficultyName(difficulty + 1)}！`, 'success');
+      }
+    }
+
+    // 保底：累计玩10局也解锁（防止一直输）
+    if (!data.gamesPlayed) data.gamesPlayed = {};
+    data.gamesPlayed[difficulty] = (data.gamesPlayed[difficulty] || 0) + 1;
+    if (data.gamesPlayed[difficulty] >= 10 && difficulty < 5) {
+      if (!data.maxUnlocked || data.maxUnlocked <= difficulty) {
+        data.maxUnlocked = difficulty + 1;
+        showToast(`📚 已玩10局，解锁了新难度：${AIPlayer.getDifficultyName(difficulty + 1)}！`, 'success');
+      }
+    }
+
+    localStorage.setItem('davinci_ai_progress', JSON.stringify(data));
+  }
+
+  function updateLocalNames() {
+    const container = document.getElementById('local-names');
+    if (!container) return;
+    const count = currentSetup.playerCount || 2;
+
+    let html = '';
+    for (let i = 0; i < count; i++) {
+      html += `
+        <div class="form-group">
+          <label>玩家${i + 1} 姓名</label>
+          <input type="text" id="local-name-${i}" value="玩家${i + 1}" maxlength="8">
+        </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  // ============ 开始游戏 ============
+  function startGame() {
+    let options = {
+      mode: currentMode,
+      enableJoker: true,
+    };
+
+    if (currentMode === 'ai') {
+      // 优先用 currentSetup，兜底从DOM读取选中按钮（防止状态丢失bug）
+      const selectedBtn = document.querySelector('#ai-player-count .player-count-btn.selected');
+      options.playerCount = currentSetup.playerCount
+        || (selectedBtn ? parseInt(selectedBtn.dataset.count) : null)
+        || 3;
+      options.playerName = document.getElementById('ai-player-name')?.value || '玩家';
+      options.aiDifficulty = currentSetup.aiDifficulty || 1;
+    } else if (currentMode === 'local') {
+      const selectedBtn = document.querySelector('#local-player-count .player-count-btn.selected');
+      options.playerCount = currentSetup.playerCount
+        || (selectedBtn ? parseInt(selectedBtn.dataset.count) : null)
+        || 2;
+      options.playerNames = [];
+      for (let i = 0; i < options.playerCount; i++) {
+        const name = document.getElementById(`local-name-${i}`)?.value || `玩家${i + 1}`;
+        options.playerNames.push(name);
+      }
+    } else {
+      return;
+    }
+
+    const success = GameManager.init(options);
+    if (!success) return;
+
+    // 初始化渲染器
+    const humanId = GameManager.humanPlayerId;
+    GameRenderer.init(humanId, currentMode === 'local');
+    GameRenderer.showToast = showToast;
+
+    // 绑定回调
+    GameManager.onStateChange = (game) => {
+      GameRenderer.render(game);
+      // 使用节流：150ms 内的多次状态变更只触发一次历史面板刷新
+      scheduleHistoryUpdate();
+    };
+    GameManager.onPhaseChange = (phase) => {
+      handlePhaseChange(phase);
+    };
+    GameManager.onGuessResult = (result) => {
+      const game = result.game || GameManager.game;
+      if (!game) return;
+
+      // 获取猜测者信息
+      const lastEntry = game.history?.[game.history.length - 1];
+      const guesserId = lastEntry?.data?.guesserId;
+      const guesser = game.players.find(p => p.id === guesserId);
+      const guesserName = guesser ? guesser.name : '?';
+      const guessed = lastEntry?.data?.guessed;
+      const targetId = lastEntry?.data?.targetId;
+      const targetPlayer = game.players.find(p => p.id === targetId);
+      const targetName = targetPlayer ? targetPlayer.name : '?';
+      const guessPosition = lastEntry?.data?.position;
+
+      // 人类玩家猜测 → 弹窗确认；AI猜测已由 onAIGuessConfirm 处理
+      if (guesser && !guesser.isAI) {
+        showPlayerGuessModal({
+          guesserName,
+          targetName,
+          position: guessPosition,
+          color: guessed?.color,
+          number: guessed?.number,
+          correct: result.correct,
+          revealedCard: result.revealedCard || null,
+          targetEliminated: result.targetEliminated || false,
+        });
+      } else {
+        // AI猜测 → toast 简要提示（弹窗由 onAIGuessConfirm 处理）
+        const guessedStr = guessed
+          ? `${guessed.color === 'black' ? '⚫黑色' : '⚪白色'}${guessed.number === 'joker' ? '鬼牌' : guessed.number}`
+          : '?';
+        if (result.correct) {
+          if (result.revealedCard && targetPlayer) {
+            showToast(`${guesserName} ✅ 猜对了${targetName}的 ${guessedStr}！`, 'success');
+          }
+          if (result.targetEliminated) {
+            const eliminated = game.players.find(p => p.isEliminated);
+            if (eliminated) showToast(`💀 ${eliminated.name} 所有牌被猜出，出局！`, 'warning');
+          }
+        } else {
+          if (guesser && guesser.isAI) {
+            const revealedCards = guesser.hand.filter(pc => pc.isRevealed);
+            if (revealedCards.length > 0) {
+              const lastRevealed = revealedCards[revealedCards.length - 1].card;
+              if (lastRevealed) {
+                const cardStr = `${lastRevealed.color === 'black' ? '⚫黑色' : '⚪白色'}${lastRevealed.number === 'joker' ? '鬼牌' : lastRevealed.number}`;
+                showToast(`${guesserName} ❌ 猜错了，公开了 ${cardStr}`, 'warning');
+              } else {
+                showToast(`${guesserName} ❌ 猜错了，公开了自己的牌`, 'warning');
+              }
+            } else {
+              showToast(`${guesserName} ❌ 猜错了`, 'warning');
+            }
+          }
+        }
+      }
+    };
+    GameManager.onGameOver = (game) => {
+      handleGameOver(game);
+    };
+    GameManager.onAITurn = (player) => {
+      GameRenderer.renderTurnBanner(GameManager.game);
+    };
+    GameManager.onToast = showToast;
+    GameManager.onAIGuessConfirm = showAIGuessModal;
+
+    // 切换到游戏屏幕
+    hideAllScreens();
+    document.getElementById('screen-game').classList.remove('hidden');
+
+    // 初始渲染
+    GameRenderer.render(GameManager.game);
+
+    // 硬币决定先后手，然后开始游戏
+    flipCoinAndStart(() => {
+      if (GameManager.getInitialJokers().length > 0) {
+        startInitialJokerPlacement();
+      } else {
+        GameManager.startGameFlow();
+      }
+    });
+  }
+
+  /** 硬币正反面决定先后手 */
+  function flipCoinAndStart(onDone) {
+    const game = GameManager.game;
+    const players = game.players;
+    const humanPlayer = players.find(p => !p.isAI);
+
+    // 随机决定谁先手
+    const randomIndex = Math.floor(Math.random() * players.length);
+    game.currentPlayerIndex = randomIndex;
+
+    const firstPlayer = players[randomIndex];
+    const isHumanFirst = firstPlayer.id === (humanPlayer ? humanPlayer.id : GameManager.humanPlayerId);
+
+    // 硬币结果显示
+    let coinResultText;
+    if (isHumanFirst) {
+      coinResultText = currentMode === 'local'
+        ? `🎉 ${firstPlayer.name} 先手！`
+        : `🎉 你先手！`;
+    } else {
+      coinResultText = currentMode === 'local'
+        ? `🎲 ${firstPlayer.name} 先手`
+        : `🤖 ${firstPlayer.name} 先手`;
+    }
+
+    // 创建硬币覆盖层
+    const overlay = document.createElement('div');
+    overlay.className = 'coin-flip-overlay';
+    overlay.innerHTML = `
+      <div style="font-family:var(--font-heading);font-size:1.2rem;color:var(--text-secondary);">
+        🪙 掷硬币决定先后手...
+      </div>
+      <div class="coin">
+        <div class="coin-face coin-front">🪙</div>
+        <div class="coin-face coin-back">🎲</div>
+      </div>
+      <div class="coin-result">
+        ${coinResultText}
+      </div>
+      <div style="margin-top:var(--space-md);">
+        <button class="btn btn-primary btn-lg" id="btn-coin-confirm"
+                style="opacity:0;transition:opacity 0.4s ease;">
+          👌 开始对局
+        </button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    // 2.6秒后显示确认按钮（等硬币动画完成）
+    setTimeout(() => {
+      const btn = document.getElementById('btn-coin-confirm');
+      if (btn) {
+        btn.style.opacity = '1';
+        btn.onclick = () => {
+          overlay.remove();
+          if (onDone) onDone();
+        };
+      }
+    }, 2600);
+
+    // 更新回合横幅显示先手信息
+    GameRenderer.renderTurnBanner(game);
+  }
+
+  /** 初始鬼牌放置流程（逐一放置，每轮重新扫描位置） */
+  function startInitialJokerPlacement() {
+    // 每次重新扫描当前手牌中的鬼牌位置（避免放置后位置变化导致错误）
+    const jokers = GameManager.getInitialJokers();
+    if (jokers.length === 0) {
+      // 全部放置完毕，开始游戏
+      GameRenderer.render(GameManager.game);
+      GameManager.startGameFlow();
+      return;
+    }
+
+    const currentPos = jokers[0];
+    showToast(`🃏 你的初始手牌中有鬼牌（位置${currentPos + 1}），请选择放置位置`, 'warning');
+
+    showInitialJokerDialog(currentPos, () => {
+      // 放置完一个，重新扫描继续下一个
+      startInitialJokerPlacement();
+    });
+  }
+
+  /** 初始鬼牌放置弹窗 */
+  function showInitialJokerDialog(fromPosition, onDone) {
+    const game = GameManager.game;
+    const me = game.players.find(p => p.id === GameManager.humanPlayerId);
+    if (!me) { onDone(); return; }
+
+    const handCards = me.hand;
+
+    function renderCard(pc) {
+      const c = pc.card;
+      if (!c) return '<div style="width:44px;height:66px;"></div>';
+      const isJoker = c.number === 'joker';
+      const num = isJoker ? '—' : c.number;
+      const colorEmoji = c.color === 'black' ? '⚫' : '⚪';
+      const colorLabel = c.color === 'black' ? '黑' : '白';
+      const style = (c.color === 'black')
+        ? 'background:linear-gradient(135deg,#2a2a2a,#111);color:#ddd;border:2px solid ' + (isJoker ? '#7a6a9e' : '#555') + ';'
+        : 'background:linear-gradient(135deg,#f8f4e8,#e8e0c8);color:#2a2010;border:2px solid ' + (isJoker ? '#b8a0c8' : '#c0b898') + ';';
+      const revStyle = pc.isRevealed ? 'opacity:0.5;' : '';
+      const jokerStyle = pc.position === fromPosition ? 'box-shadow:0 0 12px rgba(200,168,78,0.8);' : '';
+      return `<div style="width:44px;height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        border-radius:4px;font-weight:700;font-size:0.85rem;${style}${revStyle}${jokerStyle}">
+        <span style="font-size:1.1rem;">${num}</span><span style="font-size:0.6rem;">${colorEmoji}</span>
+        <span style="font-size:0.55rem;font-weight:700;opacity:0.8;">${colorLabel}</span></div>`;
+    }
+
+    let slotsHtml = '';
+    // 开头
+    slotsHtml += `<div class="joker-slot" onclick="placeInitialJokerAt(${fromPosition},0);document.querySelector('.modal-overlay')?.remove();">⬅<br><small>最左</small></div>`;
+
+    for (let i = 0; i < handCards.length; i++) {
+      if (i > 0) {
+        slotsHtml += `<div class="joker-slot between" onclick="placeInitialJokerAt(${fromPosition},${i});document.querySelector('.modal-overlay')?.remove();">↓</div>`;
+      }
+      slotsHtml += renderCard(handCards[i]);
+    }
+
+    // 末尾
+    slotsHtml += `<div class="joker-slot" onclick="placeInitialJokerAt(${fromPosition},${handCards.length});document.querySelector('.modal-overlay')?.remove();">➡<br><small>最右</small></div>`;
+
+    // 保存回调
+    window._initJokerDone = onDone;
+
+    showModal(`
+      <h2>🃏 放置初始鬼牌</h2>
+      <p style="color:var(--text-secondary);text-align:center;margin-bottom:var(--space-sm);">
+        你的初始手牌中有鬼牌 <span style="color:var(--gold);">（金色高亮）</span><br>
+        点击箭头/缝隙来选择放置位置
+      </p>
+      <div class="joker-slots">${slotsHtml}</div>
+      <p style="text-align:center;color:var(--text-muted);font-size:0.75rem;margin-top:var(--space-xs);">
+        鬼牌可以放在手牌中的任意位置
+      </p>`, false);
+  }
+
+  /** 放置初始鬼牌 */
+  function placeInitialJokerAt(fromPos, toPos) {
+    GameManager.placeInitialJoker(fromPos, toPos);
+    closeModal(true);
+    // 更新渲染
+    GameRenderer.render(GameManager.game);
+    // 通知流程继续
+    if (window._initJokerDone) {
+      const cb = window._initJokerDone;
+      window._initJokerDone = null;
+      setTimeout(cb, 300);
+    }
+  }
+
+  function handlePhaseChange(phase) {
+    const game = GameManager.game;
+    updateGameActions(phase);
+
+    // 非GUESS阶段隐藏猜牌面板
+    if (phase !== 'guess' && phase !== 'continue_or_stop') {
+      hideGuessPanel();
+    }
+
+    switch (phase) {
+      case 'draw':
+        // 摸牌阶段：显示提示，等待玩家点击摸牌
+        break;
+
+      case 'joker_place':
+        if (GameManager.isHumanTurn()) {
+          showJokerPlacementDialog();
+        }
+        break;
+
+      case 'guess':
+        if (GameManager.isHumanTurn()) {
+          showGuessPanel();
+        }
+        break;
+
+      case 'continue_or_stop':
+        if (GameManager.isHumanTurn()) {
+          hideGuessPanel();
+          showContinueOrStopDialog();
+        }
+        break;
+
+      case 'reveal_own':
+        if (GameManager.isHumanTurn()) {
+          showRevealOwnDialog();
+        }
+        break;
+
+      case 'switch_player':
+        handleLocalSwitch();
+        break;
+
+      case 'your_turn':
+        // 人类回合开始 → 显示摸牌UI，等玩家点击
+        if (GameManager.isHumanTurn()) {
+          updateGameActions('draw');
+          GameRenderer.renderTurnBanner(GameManager.game);
+        }
+        break;
+
+      default:
+        updateGameActions(null);
+    }
+  }
+
+  /** 更新游戏操作区按钮 */
+  function updateGameActions(phase) {
+    const container = document.getElementById('game-actions-area');
+    if (!container) return;
+
+    const game = GameManager.game;
+    if (!game || game.status === 'finished') {
+      container.innerHTML = '';
+      return;
+    }
+
+    let html = '';
+    const isHuman = GameManager.isHumanTurn();
+
+    if (phase === 'draw' && isHuman) {
+      html = `<button class="btn btn-primary btn-lg" onclick="playerDoDraw()" style="animation:pulse 1.5s ease infinite;">🃏 摸牌</button>`;
+    } else if (phase === 'guess' && isHuman) {
+      html = `<button class="btn btn-primary btn-sm" onclick="showGuessPanel()">🎯 猜牌面板</button>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  /** 玩家主动摸牌 */
+  function playerDoDraw() {
+    const game = GameManager.game;
+    if (!game || game.phase !== 'draw' || !GameManager.isHumanTurn()) return;
+    GameRenderer.animateDraw();
+    GameManager.doDrawCard();
+  }
+
+  function handleGameOver(game) {
+    hideGuessPanel();
+    const winner = game.players.find(p => p.id === game.winnerId);
+    const humanPlayer = game.players.find(p => p.id === GameManager.humanPlayerId || !p.isAI);
+
+    // 记录AI进度
+    if (game.mode === 'ai') {
+      if (winner && !winner.isAI) {
+        // 人类赢了
+        const aiPlayers = game.players.filter(p => p.isAI);
+        const maxDifficulty = Math.max(...aiPlayers.map(p => p.aiDifficulty || 1));
+        recordAIWin(maxDifficulty);
+      }
+    }
+
+    showGameResultModal(game);
+  }
+
+  function handleLocalSwitch() {
+    const game = GameManager.game;
+    const nextPlayer = game.players[game.currentPlayerIndex];
+
+    document.getElementById('switch-player-name').textContent = nextPlayer.name;
+    document.getElementById('switch-confirm-name').textContent = nextPlayer.name;
+    document.getElementById('switch-screen').classList.remove('hidden');
+  }
+
+  function confirmSwitchPlayer() {
+    document.getElementById('switch-screen').classList.add('hidden');
+    GameManager.continueLocalGame();
+  }
+
+  // ============ 弹窗管理 ============
+  let currentModalDismissible = true; // 当前弹窗是否可通过点击外部关闭
+
+  // ============ AI猜测确认弹窗 ============
+  function showAIGuessModal(guessInfo) {
+    const colorEmoji = guessInfo.color === 'black' ? '⚫' : '⚪';
+    const colorLabel = guessInfo.color === 'black' ? '黑色' : '白色';
+    const numberStr = guessInfo.number === 'joker' ? '鬼牌' : guessInfo.number;
+    const guessStr = `${colorEmoji}${colorLabel}${numberStr}`;
+
+    let resultClass = guessInfo.correct ? 'correct-guess' : 'wrong-guess';
+    let resultIcon = guessInfo.correct ? '✅' : '❌';
+    let resultText = guessInfo.correct ? '猜对了！' : '猜错了！';
+
+    let revealedHtml = '';
+    if (guessInfo.revealedCard) {
+      const rc = guessInfo.revealedCard;
+      const rcStr = `${rc.color === 'black' ? '⚫黑色' : '⚪白色'}${rc.number === 'joker' ? '鬼牌' : rc.number}`;
+      revealedHtml = `<div class="revealed-info">🃏 ${guessInfo.targetName} 公开了：<strong>${rcStr}</strong></div>`;
+    }
+    if (guessInfo.targetEliminated) {
+      revealedHtml += `<div class="revealed-info" style="color:var(--accent-red);">💀 ${guessInfo.targetName} 所有牌被猜出，出局！</div>`;
+    }
+
+    const html = `
+      <div class="ai-guess-modal">
+        <div class="guesser-name">🤖 ${guessInfo.guesserName} 做出了猜测</div>
+        <div class="guess-target">🎯 目标：${guessInfo.targetName} 的第 ${guessInfo.position + 1} 张牌</div>
+        <div class="guess-content ${resultClass}">
+          <div class="result-icon">${resultIcon}</div>
+          <div style="font-size:1.2rem;">猜测：<strong>${guessStr}</strong></div>
+          <div style="font-size:1.1rem;margin-top:4px;color:${guessInfo.correct ? 'var(--accent-green)' : 'var(--accent-red)'};">${resultText}</div>
+        </div>
+        ${revealedHtml}
+        <div style="margin-top:var(--space-lg);">
+          <button class="btn btn-primary btn-lg" onclick="confirmAIGuess()" style="min-width:160px;">
+            👌 知道了
+          </button>
+        </div>
+      </div>`;
+    showModal(html, false);
+  }
+
+  /** 玩家确认AI猜测，继续游戏 */
+  function confirmAIGuess() {
+    closeModal(true);
+    GameManager.confirmAIGuess();
+  }
+
+  /** 玩家自己猜测的结果弹窗（不暂停游戏流程，仅确认） */
+  function showPlayerGuessModal(guessInfo) {
+    const colorEmoji = guessInfo.color === 'black' ? '⚫' : '⚪';
+    const colorLabel = guessInfo.color === 'black' ? '黑色' : '白色';
+    const numberStr = guessInfo.number === 'joker' ? '鬼牌' : guessInfo.number;
+    const guessStr = `${colorEmoji}${colorLabel}${numberStr}`;
+
+    let resultClass = guessInfo.correct ? 'correct-guess' : 'wrong-guess';
+    let resultIcon = guessInfo.correct ? '✅' : '❌';
+    let resultText = guessInfo.correct ? '猜对了！' : '猜错了！';
+
+    let revealedHtml = '';
+    if (guessInfo.revealedCard) {
+      const rc = guessInfo.revealedCard;
+      const rcStr = `${rc.color === 'black' ? '⚫黑色' : '⚪白色'}${rc.number === 'joker' ? '鬼牌' : rc.number}`;
+      revealedHtml = `<div class="revealed-info">🃏 ${guessInfo.targetName} 公开了：<strong>${rcStr}</strong></div>`;
+    }
+    if (guessInfo.targetEliminated) {
+      revealedHtml += `<div class="revealed-info" style="color:var(--accent-red);">💀 ${guessInfo.targetName} 所有牌被猜出，出局！</div>`;
+    }
+    // 猜错时提示公开了自己的牌
+    if (!guessInfo.correct) {
+      revealedHtml += `<div class="revealed-info" style="color:var(--gold);">⚠️ 你摸到的牌已公开并按顺序插入手牌</div>`;
+    }
+
+    const html = `
+      <div class="ai-guess-modal">
+        <div class="guesser-name">🎯 你的猜测</div>
+        <div class="guess-target">目标：${guessInfo.targetName} 的第 ${guessInfo.position + 1} 张牌</div>
+        <div class="guess-content ${resultClass}">
+          <div class="result-icon">${resultIcon}</div>
+          <div style="font-size:1.2rem;">猜测：<strong>${guessStr}</strong></div>
+          <div style="font-size:1.1rem;margin-top:4px;color:${guessInfo.correct ? 'var(--accent-green)' : 'var(--accent-red)'};">${resultText}</div>
+        </div>
+        ${revealedHtml}
+        <div style="margin-top:var(--space-lg);">
+          <button class="btn btn-primary btn-lg" onclick="closeModal(true)" style="min-width:160px;">
+            👌 知道了
+          </button>
+        </div>
+      </div>`;
+    showModal(html, false);
+  }
+
+  function showModal(html, dismissible = true) {
+    currentModalDismissible = dismissible;
+    const container = document.getElementById('modal-container');
+    const closeHandler = dismissible
+      ? "onclick=\"event.target===this&&closeModal()\""
+      : '';
+    container.innerHTML = `
+      <div class="modal-overlay" ${closeHandler}>
+        <div class="modal-content">
+          ${html}
+        </div>
+      </div>`;
+  }
+
+  function closeModal(force = false) {
+    // 关键游戏弹窗不允许关闭（除非强制）
+    if (!currentModalDismissible && !force) return;
+    currentModalDismissible = true;
+    document.getElementById('modal-container').innerHTML = '';
+    // 仅当非强制关闭（意外关闭）时才自动恢复
+    if (force) return;
+    const game = GameManager.game;
+    if (game && game.status === 'playing' && GameManager.isHumanTurn()) {
+      if (game.phase === 'guess') {
+        setTimeout(() => showGuessPanel(), 100);
+      } else if (game.phase === 'joker_place') {
+        setTimeout(() => showJokerPlacementDialog(), 100);
+      } else if (game.phase === 'reveal_own') {
+        setTimeout(() => showRevealOwnDialog(), 100);
+      }
+    }
+  }
+
+  // ============ 猜测底部面板 ============
+  let guessTarget = { playerId: null, position: null, color: null, number: null };
+
+  /** 显示底部猜牌面板（替代弹窗） */
+  function showGuessPanel() {
+    const panel = document.getElementById('guess-panel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    updateGuessPanelState();
+    updateOpponentCardClickability(true);
+  }
+
+  /** 隐藏底部猜牌面板 */
+  function hideGuessPanel() {
+    const panel = document.getElementById('guess-panel');
+    if (panel) panel.classList.add('hidden');
+    updateOpponentCardClickability(false);
+    // 清除选中状态
+    clearTargetHighlight();
+  }
+
+  /** 更新面板显示状态 */
+  function updateGuessPanelState() {
+    // 更新标题
+    const titleEl = document.getElementById('guess-panel-title');
+    const targetEl = document.getElementById('guess-panel-target');
+    if (targetEl) {
+      if (guessTarget.playerId && guessTarget.position !== null) {
+        const game = GameManager.game;
+        const targetPlayer = game.players.find(p => p.id === guessTarget.playerId);
+        targetEl.textContent = `目标: ${targetPlayer ? targetPlayer.name : '?'} 位置${guessTarget.position + 1}`;
+      } else {
+        targetEl.textContent = '👆 请点击上方对手的牌选择目标';
+      }
+    }
+
+    // 更新颜色按钮
+    document.querySelectorAll('.color-pick-btn').forEach(b => b.classList.remove('selected'));
+    if (guessTarget.color) {
+      const colorBtn = document.getElementById('pick-color-' + guessTarget.color);
+      if (colorBtn) colorBtn.classList.add('selected');
+    }
+
+    // 更新数字按钮
+    renderGuessNumberGrid();
+
+    // 更新确认按钮
+    const submitBtn = document.getElementById('btn-submit-guess');
+    if (submitBtn) {
+      const canSubmit = guessTarget.playerId && guessTarget.position !== null &&
+                        guessTarget.color && guessTarget.number !== null;
+      submitBtn.disabled = !canSubmit;
+    }
+
+    // 更新对手牌的选中高亮
+    updateTargetHighlight();
+  }
+
+  /** 生成数字选择网格 */
+  function renderGuessNumberGrid() {
+    const container = document.getElementById('guess-panel-numbers');
+    if (!container) return;
+
+    // 检查哪些牌玩家手中已有（但仍可点击，用于误导对手）
+    const ownedCards = getOwnedCardsSet();
+
+    let html = '';
+    for (let i = 0; i <= 11; i++) {
+      const owned = ownedCards.has(guessTarget.color + '_' + i);
+      const sel = guessTarget.number === i ? ' selected' : '';
+      const ownedCls = owned ? ' owned-hint' : '';
+      html += `<button class="num-pick-btn${sel}${ownedCls}" onclick="pickGuessNumber(${i})">${i}${owned ? '<small> 有</small>' : ''}</button>`;
+    }
+    html += `<button class="num-pick-btn joker-pick${guessTarget.number === 'joker' ? ' selected' : ''}"
+                  onclick="pickGuessNumber('joker')">— 鬼牌</button>`;
+    container.innerHTML = html;
+  }
+
+  /** 获取玩家手中已有的牌集合 (color_number) */
+  function getOwnedCardsSet() {
+    const set = new Set();
+    const game = GameManager.game;
+    if (!game) return set;
+    const viewerId = GameManager.getCurrentHumanId();
+    const me = game.players.find(p => p.id === viewerId);
+    if (!me) return set;
+    me.hand.forEach(pc => {
+      if (!pc.isRevealed && pc.card && pc.card.number !== 'joker') {
+        set.add(pc.card.color + '_' + pc.card.number);
+      }
+    });
+    return set;
+  }
+
+  /** 选择猜测颜色 */
+  function pickGuessColor(color) {
+    guessTarget.color = color;
+    guessTarget.number = null;
+    updateGuessPanelState();
+  }
+
+  /** 选择猜测数字 */
+  function pickGuessNumber(number) {
+    guessTarget.number = number;
+    updateGuessPanelState();
+  }
+
+  /** 点击对手牌选择目标 */
+  function onOpponentCardClick(playerId, position) {
+    // 面板未显示时不响应
+    const panel = document.getElementById('guess-panel');
+    if (!panel || panel.classList.contains('hidden')) return;
+
+    const game = GameManager.game;
+    if (!game || game.phase !== 'guess') return;
+
+    const targetPlayer = game.players.find(p => p.id === playerId);
+    if (!targetPlayer) return;
+    const pc = targetPlayer.hand.find(c => c.position === position);
+    if (!pc || pc.isRevealed) return; // 已公开的不能选
+
+    guessTarget.playerId = playerId;
+    guessTarget.position = position;
+    // 重置颜色和数字
+    guessTarget.color = null;
+    guessTarget.number = null;
+    updateGuessPanelState();
+  }
+
+  /** 更新对手牌可点击状态 */
+  function updateOpponentCardClickability(clickable) {
+    document.querySelectorAll('.game-card.selectable-target').forEach(el => {
+      if (clickable) {
+        el.style.pointerEvents = 'auto';
+        el.onclick = function() {
+          onOpponentCardClick(this.dataset.player, parseInt(this.dataset.pos));
+        };
+      } else {
+        el.style.pointerEvents = 'none';
+        el.onclick = null;
+      }
+    });
+  }
+
+  /** 高亮选中的目标牌 */
+  function updateTargetHighlight() {
+    clearTargetHighlight();
+    if (guessTarget.playerId && guessTarget.position !== null) {
+      const el = document.querySelector(
+        `.game-card[data-player="${guessTarget.playerId}"][data-pos="${guessTarget.position}"]`
+      );
+      if (el) el.classList.add('target-selected');
+    }
+  }
+
+  /** 清除高亮 */
+  function clearTargetHighlight() {
+    document.querySelectorAll('.game-card.target-selected').forEach(el => {
+      el.classList.remove('target-selected');
+    });
+  }
+
+  /** 重置选择 */
+  function resetGuessSelection() {
+    guessTarget = { playerId: null, position: null, color: null, number: null };
+    updateGuessPanelState();
+  }
+
+  /** 提交猜测 */
+  function submitGuessFromPanel() {
+    if (!guessTarget.playerId || guessTarget.position === null ||
+        !guessTarget.color || guessTarget.number === null) {
+      return;
+    }
+    hideGuessPanel();
+    GameManager.doGuess(guessTarget.playerId, guessTarget.position, guessTarget.color, guessTarget.number);
+    guessTarget = { playerId: null, position: null, color: null, number: null };
+  }
+
+  // 兼容旧调用
+  function showGuessDialog() { showGuessPanel(); }
+
+  function isNumberDisabled(number, color) {
+    // 允许猜自己手中已有的牌来误导对手（心理战策略）
+    return false;
+  }
+
+  // ============ 继续/停止对话框 ============
+  function showContinueOrStopDialog() {
+    showModal(`
+      <h2>✅ 猜对了！</h2>
+      <p style="text-align:center;color:var(--text-secondary);margin:var(--space-md) 0;">
+        你可以继续猜测，或者停止并隐藏你的牌
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary btn-lg" onclick="doStop()">
+          🛑 停止<br><small style="font-size:0.7rem">隐藏摸到的牌</small>
+        </button>
+        <button class="btn btn-primary btn-lg" onclick="doContinueGuess()">
+          🔍 继续猜<br><small style="font-size:0.7rem">继续攻击</small>
+        </button>
+      </div>`, false);
+  }
+
+  function doStop() {
+    closeModal(true);
+    GameManager.doStop();
+  }
+
+  function doContinueGuess() {
+    closeModal(true);
+    updateGameActions('guess');
+    showGuessPanel();
+  }
+
+  // ============ 鬼牌放置对话框 ============
+  function showJokerPlacementDialog() {
+    const game = GameManager.game;
+    const viewerId = GameManager.getCurrentHumanId();
+    const me = game.players.find(p => p.id === viewerId);
+    if (!me) return;
+
+    showToast('🃏 你摸到了鬼牌！请选择放置位置', 'warning');
+
+    const handCards = me.hand;
+
+    // 显示卡牌（玩家能看到自己的牌）
+    function renderHandCard(pc) {
+      const c = pc.card;
+      const isJoker = c.number === 'joker';
+      const num = isJoker ? '—' : c.number;
+      const colorEmoji = c.color === 'black' ? '⚫' : '⚪';
+      const colorLabel = c.color === 'black' ? '黑' : '白';
+      const style = (c.color === 'black')
+        ? 'background:linear-gradient(135deg,#2a2a2a,#111);color:#ddd;border:2px solid ' + (isJoker ? '#7a6a9e' : '#555') + ';'
+        : 'background:linear-gradient(135deg,#f8f4e8,#e8e0c8);color:#2a2010;border:2px solid ' + (isJoker ? '#b8a0c8' : '#c0b898') + ';';
+      const revStyle = pc.isRevealed ? 'opacity:0.5;' : '';
+      return `<div style="width:44px;height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        border-radius:4px;font-weight:700;font-size:0.85rem;${style}${revStyle}">
+        <span style="font-size:1.1rem;">${num}</span><span style="font-size:0.6rem;">${colorEmoji}</span>
+        <span style="font-size:0.55rem;font-weight:700;opacity:0.8;">${colorLabel}</span></div>`;
+    }
+
+    let slotsHtml = '';
+    // 开头位置
+    slotsHtml += `<div class="joker-slot" onclick="placeJokerAt(0)" title="放在最左边">⬅<br><small>最左</small></div>`;
+
+    for (let i = 0; i < handCards.length; i++) {
+      if (i > 0) {
+        // 牌之间的缝隙
+        slotsHtml += `<div class="joker-slot between" onclick="placeJokerAt(${i})" title="放在第${i+1}张位置">↓</div>`;
+      }
+      slotsHtml += renderHandCard(handCards[i]);
+    }
+
+    // 末尾
+    slotsHtml += `<div class="joker-slot" onclick="placeJokerAt(${handCards.length})" title="放在最右边">➡<br><small>最右</small></div>`;
+
+    showModal(`
+      <h2>🃏 放置鬼牌</h2>
+      <p style="color:var(--text-secondary);text-align:center;margin-bottom:var(--space-sm);">
+        你摸到了鬼牌！点击 <span style="color:var(--gold);">箭头/缝隙</span> 来放置
+      </p>
+      <div class="joker-slots">${slotsHtml}</div>
+      <p style="text-align:center;color:var(--text-muted);font-size:0.75rem;margin-top:var(--space-xs);">
+        鬼牌可放在任意位置，放置后不能移动
+      </p>`, false);
+  }
+
+  function placeJokerAt(position) {
+    closeModal(true);
+    GameManager.doPlaceJoker(position);
+  }
+
+  // ============ 公开自己牌的对话框 ============
+  function showRevealOwnDialog() {
+    const game = GameManager.game;
+    const viewerId = GameManager.getCurrentHumanId();
+    const me = game.players.find(p => p.id === viewerId);
+    if (!me) return;
+
+    const hiddenCards = me.hand.filter(pc => !pc.isRevealed);
+
+    let cardsHtml = hiddenCards.map(pc => `
+      <div class="target-player" onclick="revealOwnAt(${pc.position})" style="cursor:pointer;">
+        <span>位置 ${pc.position + 1}</span>
+        <span style="color:var(--gold);font-weight:600;">
+          ${pc.card.number === 'joker' ? '— 鬼牌' : pc.card.number}
+          ${pc.card.color === 'black' ? '⚫' : '⚪'}
+        </span>
+      </div>
+    `).join('');
+
+    showModal(`
+      <h2>😔 猜错了！</h2>
+      <p style="color:var(--text-secondary);text-align:center;">
+        请选择公开自己的一张未公开牌<br>
+        <small style="color:var(--text-muted)">点击下方牌面来选择</small>
+      </p>
+      <div class="target-selector" style="margin-top:var(--space-md);">${cardsHtml}</div>`, false);
+  }
+
+  function revealOwnAt(position) {
+    closeModal(true);
+    GameManager.doRevealOwnCard(position);
+  }
+
+  // ============ 游戏结果弹窗 ============
+  function showGameResultModal(game) {
+    const winner = game.players.find(p => p.id === game.winnerId);
+    const viewerId = GameManager.getCurrentHumanId();
+    const isWin = winner && winner.id === viewerId;
+
+    const playersHtml = game.players.map(p => {
+      const hiddenCount = p.hand.filter(pc => !pc.isRevealed).length;
+      return `
+        <div class="result-stat">
+          <div class="stat-label">${p.name} ${p.isAI ? '(AI)' : ''}</div>
+          <div class="stat-value" style="font-size:1.2rem;">${p.isEliminated ? '💀 出局' : `🔒 ${hiddenCount}张隐藏`}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">
+            公开 ${p.hand.filter(pc => pc.isRevealed).length}/${p.hand.length}
+          </div>
+        </div>`;
+    }).join('');
+
+    showModal(`
+      <div class="result-container" style="padding:var(--space-lg);">
+        <div class="winner-icon">${isWin ? '🏆' : '🎭'}</div>
+        <h2 style="font-size:1.5rem;">${isWin ? '恭喜你赢了！' : `${winner.name} 获胜`}</h2>
+        <div class="result-stats" style="grid-template-columns:repeat(${Math.min(game.players.length, 4)},1fr);">${playersHtml}</div>
+        <div style="margin-top:var(--space-md);color:var(--text-muted);font-size:0.85rem;">
+          共 ${game.turnNumber} 回合 | 牌堆剩余 ${game.deck.length} 张
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" onclick="closeModal();showHome();">返回首页</button>
+          <button class="btn btn-secondary" onclick="closeModal();startGame();">再来一局</button>
+        </div>
+      </div>`);
+  }
+
+  // ============ 历史记录面板 ============
+  let _historyTimer = null;
+  function scheduleHistoryUpdate() {
+    if (_historyTimer) clearTimeout(_historyTimer);
+    _historyTimer = setTimeout(() => {
+      _historyTimer = null;
+      updateHistoryPanel();
+    }, 150); // 150ms 节流，等牌序稳定后再刷新
+  }
+
+  function toggleHistory() {
+    const panel = document.getElementById('history-panel');
+    if (panel) {
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        updateHistoryPanel(); // 手动打开时立即刷新
+      }
+    }
+  }
+
+  // 根据 cardId 在游戏当前状态中查找该牌的实时位置
+  function findCardCurrentPosition(game, cardId, playerId) {
+    if (!cardId) return null;
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return null;
+    const pc = player.hand.find(pc => pc.card && pc.card.id === cardId);
+    return pc ? pc.position : null;
+  }
+
+  function updateHistoryPanel() {
+    const list = document.getElementById('history-list');
+    if (!list) return;
+    const game = GameManager.game;
+    if (!game || !game.history) { list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:var(--space-md);">暂无记录</div>'; return; }
+
+    // 当前查看者（人类玩家）的ID，用于判断哪些信息可以显示
+    const viewerId = GameManager.humanPlayerId;
+    // 本地多人模式下，当前屏幕显示的是哪个玩家
+    const localViewerId = GameManager.mode === 'local'
+      ? (game.players[game.currentPlayerIndex] ? game.players[game.currentPlayerIndex].id : null)
+      : viewerId;
+
+    const entries = game.history;
+    let html = '';
+    // 显示最近80条（从新到旧）
+    const recent = entries.slice(-80).reverse();
+
+    for (const entry of recent) {
+      const turn = entry.turnNumber || '?';
+      const player = game.players[entry.playerIndex];
+      const playerName = player ? player.name : '?';
+      const data = entry.data || {};
+      // 这个操作是不是当前查看者自己做的
+      const isOwn = player && (player.id === viewerId || player.id === localViewerId);
+
+      let icon, text, cls;
+      switch (entry.actionType) {
+        case 'draw': {
+          icon = '🃏'; cls = 'type-draw';
+          const dc = data.drawnCard;
+          if (data.cardDrawn === false) {
+            text = `<strong>${playerName}</strong> 摸牌 (牌堆空)`;
+          } else if (isOwn && dc) {
+            // 自己的回合：可以看到摸到了什么牌
+            const isJoker = dc.number === 'joker';
+            text = `<strong>${playerName}</strong> 摸牌: ${dc.color==='black'?'⚫黑':'⚪白'}${isJoker?'鬼牌':dc.number}`;
+          } else {
+            // 对手回合：只知道摸了牌，不知道摸到了什么
+            text = `<strong>${playerName}</strong> 摸牌`;
+          }
+          if (data.deckRemaining !== undefined) {
+            text += ` <span style="opacity:0.6">(余${data.deckRemaining}张)</span>`;
+          }
+          break;
+        }
+        case 'guess': {
+          const guessed = data.guessed;
+          const gStr = guessed ? `${guessed.color==='black'?'⚫黑':'⚪白'}${guessed.number==='joker'?'鬼':guessed.number}` : '?';
+          const target = game.players.find(p => p.id === data.targetId);
+          const targetName = target ? target.name : '?';
+          // 动态查找牌的当前位置（牌可能因插入而移动）
+          const curPos = findCardCurrentPosition(game, data.targetCardId, data.targetId);
+          const pos = (curPos !== null ? curPos : data.position || 0) + 1;
+          const posChanged = curPos !== null && curPos !== data.position;
+          if (data.correct) {
+            icon = '✅'; cls = 'type-guess-correct';
+            text = `<strong>${playerName}</strong> 猜 ${targetName}[${pos}]=<b>${gStr}</b> ✓`;
+            if (data.revealedCard) {
+              const rc = data.revealedCard;
+              text += ` → 公开 ${rc.color==='black'?'⚫黑':'⚪白'}${rc.number==='joker'?'鬼':rc.number}`;
+            }
+          } else {
+            icon = '❌'; cls = 'type-guess-wrong';
+            text = `<strong>${playerName}</strong> 猜 ${targetName}[${pos}]=<b>${gStr}</b> ✗`;
+            if (data.revealedCard) {
+              const rc = data.revealedCard;
+              text += ` → 公开 ${rc.color==='black'?'⚫黑':'⚪白'}${rc.number==='joker'?'鬼':rc.number} 并插入手牌`;
+            }
+          }
+          if (posChanged) {
+            text += ` <span style="opacity:0.5">(原[${(data.position||0)+1}])</span>`;
+          }
+          break;
+        }
+        case 'stop':
+          icon = '🛑'; cls = 'type-draw';
+          text = `<strong>${playerName}</strong> 停止猜测`;
+          // 只有自己的回合才显示秘密插入了什么牌
+          if (isOwn && data.insertedCard) {
+            const ic = data.insertedCard;
+            text += ` → 秘密插入 ${ic.color==='black'?'⚫黑':'⚪白'}${ic.number==='joker'?'鬼':ic.number} (手牌${data.handSize}张)`;
+          } else if (data.handSize) {
+            text += ` (手牌${data.handSize}张)`;
+          }
+          break;
+        case 'reveal_own': {
+          // 动态查找牌的当前位置
+          const curPos2 = findCardCurrentPosition(game, data.cardId, player ? player.id : null);
+          const pos2 = (curPos2 !== null ? curPos2 : data.position || 0) + 1;
+          const posChanged2 = curPos2 !== null && curPos2 !== data.position;
+          icon = '😔'; cls = 'type-guess-wrong';
+          // reveal_own 是公开信息，可以显示
+          text = `<strong>${playerName}</strong> 公开自己[${pos2}]号牌`;
+          if (posChanged2) {
+            text += ` <span style="opacity:0.5">(原[${(data.position||0)+1}])</span>`;
+          }
+          break;
+        }
+        case 'joker_place': {
+          icon = '🃏'; cls = 'type-draw';
+          if (isOwn) {
+            // 自己的回合：可以看到鬼牌放在哪个位置
+            const curPos3 = findCardCurrentPosition(game, data.cardId, player ? player.id : null);
+            const pos3 = (curPos3 !== null ? curPos3 : data.position || 0) + 1;
+            const posChanged3 = curPos3 !== null && curPos3 !== data.position;
+            text = `<strong>${playerName}</strong> 鬼牌放位置${pos3}`;
+            if (data.card) {
+              text += ` (${data.card.color==='black'?'⚫黑':'⚪白'}鬼牌)`;
+            }
+            if (posChanged3) {
+              text += ` <span style="opacity:0.5">(原[${(data.position||0)+1}])</span>`;
+            }
+          } else {
+            // 对手回合：只显示放置了鬼牌，不暴露位置
+            text = `<strong>${playerName}</strong> 放置了鬼牌`;
+            if (data.card) {
+              text += ` (${data.card.color==='black'?'⚫黑':'⚪白'}鬼牌)`;
+            }
+          }
+          break;
+        }
+        case 'move_card':
+          icon = '🔄'; cls = 'type-draw';
+          if (isOwn) {
+            text = `<strong>${playerName}</strong> 鬼牌 ${(data.fromPosition||0)+1}→${(data.toPosition||0)+1}`;
+          } else {
+            text = `<strong>${playerName}</strong> 调整了鬼牌`;
+          }
+          break;
+        default:
+          icon = '•';
+          text = `<strong>${playerName}</strong> ${entry.actionType}`;
+          cls = '';
+      }
+
+      html += `<div class="history-entry ${cls}"><span style="margin-right:4px;">${icon}</span>[${turn}] ${text}</div>`;
+    }
+
+    if (!html) html = '<div style="color:var(--text-muted);text-align:center;padding:var(--space-md);">暂无记录</div>';
+    list.innerHTML = html;
+  }
+
+  // ============ 退出确认 ============
+  function confirmQuit() {
+    showModal(`
+      <h2>退出游戏？</h2>
+      <p style="text-align:center;color:var(--text-secondary);">当前游戏进度将丢失</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">继续游戏</button>
+        <button class="btn btn-danger" onclick="closeModal();showHome();">确认退出</button>
+      </div>`);
+  }
+
+  // ============ 新手教程 ============
+  function startTutorial() {
+    // 设置一个简单的AI游戏作为教程
+    currentMode = 'ai';
+    currentSetup = { playerCount: 2, aiDifficulty: 1 };
+
+    const options = {
+      mode: 'ai',
+      playerCount: 2,
+      playerName: '新手',
+      aiDifficulty: 1,
+      enableJoker: true,
+    };
+
+    const success = GameManager.init(options);
+    if (!success) return;
+
+    GameRenderer.init(GameManager.humanPlayerId, false);
+    GameRenderer.showToast = showToast;
+
+    GameManager.onStateChange = (game) => GameRenderer.render(game);
+    GameManager.onGameOver = (game) => {
+      showTutorialStep('complete');
+    };
+    GameManager.onAITurn = (player) => GameRenderer.renderTurnBanner(GameManager.game);
+    GameManager.onToast = showToast;
+
+    hideAllScreens();
+    document.getElementById('screen-game').classList.remove('hidden');
+    GameRenderer.render(GameManager.game);
+
+    // 开始教程引导
+    showTutorialStep(1);
+    GameManager.startGameFlow();
+  }
+
+  const tutorialSteps = [
+    { id: 1, title: '欢迎来到达芬奇密码！', text: '这是一个推理猜牌游戏。你的目标是在自己的牌全部被猜出之前，猜出对手的所有牌。', target: '#turn-banner' },
+    { id: 2, title: '你的手牌', text: '这是你的手牌。牌按数字从小到大从左到右排列。黑色在白色左边，鬼牌（—）可以放在任意位置。', target: '#my-hand' },
+    { id: 3, title: '对手的手牌', text: '这是对手的手牌。你只能看到牌的位置，看不到数字。你需要通过推理来猜测每张牌是什么。', target: '#opponents-area' },
+    { id: 4, title: '牌堆', text: '这是摸牌堆。每个回合开始时，你需要从这里摸一张牌。剩余牌数显示在下方。', target: '#draw-pile-area' },
+    { id: 5, title: '轮到你了：摸牌', text: '现在轮到你的回合。你需要先从牌堆摸牌。系统会自动帮你摸（因为这是教程模式）。', target: '#turn-banner' },
+    { id: 6, title: '猜测对手的牌', text: '摸完牌后，你需要猜测对手的一张牌。选择目标、颜色和数字，然后确认。系统会告诉你猜对还是猜错。', target: '#opponents-area' },
+    { id: 7, title: '猜对时可以继续', text: '猜对后你可以选择继续猜（不摸新牌）或停止。连续猜对可以快速削减对手。', target: '#turn-banner' },
+    { id: 8, title: '猜错时回合结束', text: '猜错后你需要公开刚摸的牌，回合立即结束。所以每次猜测都要慎重考虑！', target: '#turn-banner' },
+    { id: 9, title: '鬼牌的特殊规则', text: '鬼牌（—）可以代表任意数字。当你摸到鬼牌时需要选择放置位置。猜对手鬼牌时要说出"黑色鬼牌"或"白色鬼牌"。', target: '#my-hand' },
+    { id: 10, title: '胜利条件', text: '最后一个还有未公开牌的玩家获胜。试试看吧！', target: '#turn-banner' },
+    { id: 'complete', title: '教程完成！', text: '你已经掌握了基本规则。现在可以自由游戏了，祝你好运！', target: '#turn-banner' },
+  ];
+
+  let currentTutorialStep = 0;
+
+  function showTutorialStep(stepId) {
+    if (stepId === 'complete') {
+      document.getElementById('modal-container').innerHTML = '';
+      document.querySelector('.tutorial-overlay')?.remove();
+      showModal(`
+        <h2>🎓 教程完成！</h2>
+        <p style="text-align:center;color:var(--text-secondary);">你已经掌握了达芬奇密码的基本规则</p>
+        <div class="modal-actions">
+          <button class="btn btn-primary" onclick="closeModal();startGame();">开始正式对战</button>
+          <button class="btn btn-secondary" onclick="closeModal();">继续自由游戏</button>
+        </div>`);
+      return;
+    }
+
+    const step = tutorialSteps.find(s => s.id === stepId);
+    if (!step) return;
+
+    currentTutorialStep = tutorialSteps.indexOf(step);
+
+    // 创建或更新教程覆盖层
+    let overlay = document.querySelector('.tutorial-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'tutorial-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    const targetEl = document.querySelector(step.target);
+    let spotlightStyle = '';
+    if (targetEl) {
+      const rect = targetEl.getBoundingClientRect();
+      spotlightStyle = `top:${rect.top - 8}px;left:${rect.left - 8}px;width:${rect.width + 16}px;height:${rect.height + 16}px;`;
+    } else {
+      spotlightStyle = `top:50%;left:50%;width:200px;height:100px;transform:translate(-50%,-50%);`;
+    }
+
+    // 工具提示放在下方
+    const tipTop = targetEl ? targetEl.getBoundingClientRect().bottom + 20 : 200;
+    const tipLeft = Math.min(window.innerWidth - 340, targetEl ? targetEl.getBoundingClientRect().left : 100);
+
+    overlay.innerHTML = `
+      <div class="tutorial-spotlight" style="${spotlightStyle}"></div>
+      <div class="tutorial-tooltip" style="top:${tipTop}px;left:${tipLeft}px;">
+        <h3>${step.title}</h3>
+        <p>${step.text}</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="closeTutorial()">跳过教程</button>
+          <button class="btn btn-primary btn-sm" onclick="nextTutorialStep()">
+            ${currentTutorialStep >= tutorialSteps.length - 1 ? '完成' : '下一步 →'}
+          </button>
+        </div>
+        <div class="tutorial-dots">
+          ${tutorialSteps.filter(s => typeof s.id === 'number').map((s, i) =>
+            `<div class="tutorial-dot ${i === currentTutorialStep ? 'active' : ''}"></div>`
+          ).join('')}
+        </div>
+      </div>`;
+  }
+
+  function nextTutorialStep() {
+    const nextIdx = currentTutorialStep + 1;
+    if (nextIdx >= tutorialSteps.length) {
+      showTutorialStep('complete');
+    } else {
+      showTutorialStep(tutorialSteps[nextIdx].id);
+    }
+  }
+
+  function closeTutorial() {
+    document.querySelector('.tutorial-overlay')?.remove();
+  }
+
+  // ============ Toast ============
+  function showToast(message, type = 'info') {
+    const container = document.querySelector('.toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // ============ 背景音乐系统（Web Audio API 环境音乐） ============
+  let musicCtx = null;
+  let musicGain = null;
+  let musicPlaying = false;
+  let musicOscillators = [];
+  let musicInitialized = false;
+
+  function initMusic() {
+    if (musicInitialized) return;
+    try {
+      musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+      musicGain = musicCtx.createGain();
+      musicGain.gain.value = 0.08; // 低音量环境音乐
+      musicGain.connect(musicCtx.destination);
+      musicInitialized = true;
+    } catch(e) {
+      console.log('Web Audio API 不可用');
+    }
+  }
+
+  function startAmbientMusic() {
+    if (!musicCtx || musicPlaying) return;
+    if (musicCtx.state === 'suspended') musicCtx.resume();
+
+    const now = musicCtx.currentTime;
+    // 文艺复兴风格调式：多利亚调式 (D dorian)，营造古典神秘氛围
+    const scale = [146.83, 164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66,
+                   329.63, 349.23, 392.00, 440.00]; // D3到A4的多利亚调式
+
+    // 持续低音（风琴般的基础音）
+    function createDrone(freq, startTime, waveType = 'sine') {
+      const osc = musicCtx.createOscillator();
+      const gain = musicCtx.createGain();
+      osc.type = waveType;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.15, startTime + 2);
+      gain.gain.linearRampToValueAtTime(0.12, startTime + 4);
+      osc.connect(gain);
+      gain.connect(musicGain);
+      osc.start(startTime);
+      musicOscillators.push({ osc, gain });
+    }
+
+    // 旋律装饰音
+    function createMelodyNote(freq, startTime, duration, vol = 0.1) {
+      const osc = musicCtx.createOscillator();
+      const gain = musicCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(vol, startTime + 0.3);
+      gain.gain.setValueAtTime(vol, startTime + duration - 0.5);
+      gain.gain.linearRampToValueAtTime(0, startTime + duration);
+      osc.connect(gain);
+      gain.connect(musicGain);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+      musicOscillators.push({ osc, gain });
+    }
+
+    // 基础持续低音
+    createDrone(73.42, now, 'sine');     // D2
+    createDrone(110.00, now + 1, 'triangle'); // A2
+    createDrone(146.83, now + 2, 'sine');     // D3
+
+    // 循环旋律
+    let time = now + 4;
+    const melodyPattern = [
+      [0, 2, 4, 5, 7, 5, 4, 2],    // 上行再下行
+      [7, 5, 4, 2, 0, 2, 4, 5],
+      [4, 5, 7, 9, 7, 5, 4, 2],
+      [0, 2, 4, 7, 5, 4, 2, 0],
+    ];
+
+    function playMelodyCycle(cycleIndex) {
+      if (!musicPlaying) return;
+      const pattern = melodyPattern[cycleIndex % melodyPattern.length];
+      let t = time;
+      for (let i = 0; i < pattern.length; i++) {
+        const noteIdx = pattern[i];
+        const freq = scale[noteIdx % scale.length] * (noteIdx >= scale.length ? 2 : 1);
+        const dur = (i === pattern.length - 1) ? 2.5 : 1.8 + Math.random() * 0.5;
+        createMelodyNote(freq, t, dur);
+        t += dur * 0.7;
+      }
+      time = t;
+
+      // 随机和声
+      if (Math.random() < 0.4) {
+        const rootFreq = scale[Math.floor(Math.random() * 5) + 2];
+        createMelodyNote(rootFreq * 1.5, t - 0.5, 3, 0.05);
+      }
+
+      // 下一循环
+      const nextDelay = (3 + Math.random() * 3) * 1000;
+      musicOscillators = musicOscillators.filter(o => {
+        try { return o.osc && o.osc.playbackState !== 'finished'; } catch(e) { return false; }
+      });
+      if (musicPlaying) {
+        setTimeout(() => playMelodyCycle(cycleIndex + 1), nextDelay);
+      }
+    }
+
+    playMelodyCycle(0);
+    musicPlaying = true;
+  }
+
+  function stopMusic() {
+    musicPlaying = false;
+    for (const { osc, gain } of musicOscillators) {
+      try {
+        gain.gain.linearRampToValueAtTime(0, musicCtx.currentTime + 1);
+        osc.stop(musicCtx.currentTime + 1.1);
+      } catch(e) {}
+    }
+    musicOscillators = [];
+  }
+
+  function toggleMusic() {
+    initMusic();
+    const btn = document.getElementById('btn-music-toggle');
+    if (musicPlaying) {
+      stopMusic();
+      if (btn) { btn.textContent = '🔇'; btn.classList.remove('playing'); }
+      showToast('音乐已暂停', 'info');
+    } else {
+      startAmbientMusic();
+      if (btn) { btn.textContent = '🎵'; btn.classList.add('playing'); }
+      showToast('正在播放背景音乐', 'success');
+    }
+  }
+
+  function setMusicVolume(value) {
+    if (musicGain) {
+      musicGain.gain.value = (value / 100) * 0.2; // 0到0.2范围
+    }
+    // 保存音量偏好
+    try { localStorage.setItem('davinci_music_volume', value); } catch(e) {}
+  }
+
+  // 页面加载时恢复音量设置
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const savedVol = localStorage.getItem('davinci_music_volume');
+      if (savedVol !== null) {
+        document.getElementById('music-volume').value = savedVol;
+      }
+    } catch(e) {}
+  });
+  </script>
+</body>
+</html>
