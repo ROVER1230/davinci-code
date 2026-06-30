@@ -257,6 +257,8 @@
       top: 0; left: 0; right: 0; bottom: 0;
       z-index: 1500;
       pointer-events: none;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .tutorial-spotlight {
       position: absolute;
@@ -273,10 +275,13 @@
       max-width: 320px;
       box-shadow: var(--shadow-strong);
       pointer-events: auto;
+      /* 确保不超出屏幕顶部 */
+      margin-top: 0;
     }
     .tutorial-tooltip h3 {
       color: var(--gold);
       margin-bottom: var(--space-sm);
+      font-size: 1.05rem;
     }
     .tutorial-tooltip p {
       color: var(--text-secondary);
@@ -297,6 +302,25 @@
     }
     .tutorial-dot.active {
       background: var(--gold);
+    }
+
+    /* 手机端教程适配 */
+    @media (max-width: 480px) {
+      .tutorial-tooltip {
+        max-width: 280px;
+        padding: var(--space-md);
+      }
+      .tutorial-tooltip h3 {
+        font-size: 0.95rem;
+      }
+      .tutorial-tooltip p {
+        font-size: 0.82rem;
+        margin-bottom: var(--space-sm);
+      }
+      .tutorial-tooltip .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.78rem;
+      }
     }
 
     /* 结果页 */
@@ -2132,17 +2156,44 @@
     }
 
     const targetEl = document.querySelector(step.target);
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const isMobile = viewW < 480;
+    const tipWidth = isMobile ? 280 : 320;
+    const tipMinH = isMobile ? 180 : 200; // 提示框预估最小高度
+
     let spotlightStyle = '';
+    let tipTop, tipLeft;
+    let targetRect = null;
+
     if (targetEl) {
-      const rect = targetEl.getBoundingClientRect();
-      spotlightStyle = `top:${rect.top - 8}px;left:${rect.left - 8}px;width:${rect.width + 16}px;height:${rect.height + 16}px;`;
+      targetRect = targetEl.getBoundingClientRect();
+      spotlightStyle = `top:${targetRect.top - 8}px;left:${targetRect.left - 8}px;width:${targetRect.width + 16}px;height:${targetRect.height + 16}px;`;
+
+      // === 智能垂直定位 ===
+      const spaceBelow = viewH - targetRect.bottom - 16;  // 目标下方剩余空间
+      const spaceAbove = targetRect.top - 16;              // 目标上方剩余空间
+
+      if (spaceBelow >= tipMinH || spaceBelow >= spaceAbove) {
+        // 下方空间够用，或者下方比上方空间多 → 放下方
+        tipTop = targetRect.bottom + 16;
+        // 如果提示框仍超出屏幕，向上挪
+        if (tipTop + tipMinH > viewH - 10) {
+          tipTop = Math.max(10, viewH - tipMinH - 10);
+        }
+      } else {
+        // 上方空间更多 → 放上方
+        tipTop = Math.max(10, targetRect.top - tipMinH - 16);
+      }
+
+      // === 智能水平定位 ===
+      tipLeft = targetRect.left + targetRect.width / 2 - tipWidth / 2;
+      tipLeft = Math.max(8, Math.min(tipLeft, viewW - tipWidth - 8));
     } else {
       spotlightStyle = `top:50%;left:50%;width:200px;height:100px;transform:translate(-50%,-50%);`;
+      tipTop = Math.max(40, (viewH - tipMinH) / 2);
+      tipLeft = Math.max(8, (viewW - tipWidth) / 2);
     }
-
-    // 工具提示放在下方
-    const tipTop = targetEl ? targetEl.getBoundingClientRect().bottom + 20 : 200;
-    const tipLeft = Math.min(window.innerWidth - 340, targetEl ? targetEl.getBoundingClientRect().left : 100);
 
     overlay.innerHTML = `
       <div class="tutorial-spotlight" style="${spotlightStyle}"></div>
@@ -2161,6 +2212,8 @@
           ).join('')}
         </div>
       </div>`;
+    // 每次显示新步骤时滚动到顶部
+    overlay.scrollTop = 0;
   }
 
   function nextTutorialStep() {
@@ -2170,6 +2223,9 @@
     } else {
       showTutorialStep(tutorialSteps[nextIdx].id);
     }
+    // 滚动覆盖层到顶部，确保新提示框可见
+    const overlay = document.querySelector('.tutorial-overlay');
+    if (overlay) overlay.scrollTop = 0;
   }
 
   function closeTutorial() {
