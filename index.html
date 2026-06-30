@@ -810,6 +810,11 @@
   function showHome() {
     hideAllScreens();
     document.getElementById('screen-home').classList.remove('hidden');
+
+    // 首次访问：强制弹出新手教程
+    if (!localStorage.getItem('davinci_tutorial_done')) {
+      setTimeout(() => startTutorial(), 500);
+    }
   }
 
   function showRules() {
@@ -2099,6 +2104,8 @@
 
   function showTutorialStep(stepId) {
     if (stepId === 'complete') {
+      // 教程完成，标记已读，下次不再强制弹出
+      localStorage.setItem('davinci_tutorial_done', '1');
       document.getElementById('modal-container').innerHTML = '';
       document.querySelector('.tutorial-overlay')?.remove();
       showModal(`
@@ -2167,6 +2174,8 @@
 
   function closeTutorial() {
     document.querySelector('.tutorial-overlay')?.remove();
+    // 跳过教程也算完成了，下次不再强制弹出
+    localStorage.setItem('davinci_tutorial_done', '1');
   }
 
   // ============ Toast ============
