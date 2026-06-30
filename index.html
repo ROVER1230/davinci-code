@@ -1439,7 +1439,13 @@
     GameManager.confirmAIGuess();
   }
 
-  /** 玩家自己猜测的结果弹窗（不暂停游戏流程，仅确认） */
+  /** 玩家确认自己猜测的结果，继续游戏流程 */
+  function confirmPlayerGuess() {
+    closeModal(true);
+    GameManager.confirmPlayerGuess();
+  }
+
+  /** 玩家自己猜测的结果弹窗（暂停游戏流程，玩家确认后才继续） */
   function showPlayerGuessModal(guessInfo) {
     const colorEmoji = guessInfo.color === 'black' ? '⚫' : '⚪';
     const colorLabel = guessInfo.color === 'black' ? '黑色' : '白色';
@@ -1475,7 +1481,7 @@
         </div>
         ${revealedHtml}
         <div style="margin-top:var(--space-lg);">
-          <button class="btn btn-primary btn-lg" onclick="closeModal(true)" style="min-width:160px;">
+          <button class="btn btn-primary btn-lg" onclick="confirmPlayerGuess()" style="min-width:160px;">
             👌 知道了
           </button>
         </div>
