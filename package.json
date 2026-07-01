@@ -1,0 +1,13 @@
+{
+  "name": "davinci-code",
+  "version": "1.0.0",
+  "description": "达芬奇密码 - 在线推理桌游",
+  "main": "client/server.js",
+  "scripts": {
+    "start": "node client/server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "license": "MIT"
+}
