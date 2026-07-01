@@ -192,12 +192,12 @@
     .switch-screen {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(10,8,5,0.95);
+      background: #0a0805;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      z-index: 500;
+      z-index: 1200;
       gap: var(--space-xl);
     }
     .switch-screen h2 {
@@ -1409,6 +1409,12 @@
     const game = GameManager.game;
     const nextPlayer = game.players[game.currentPlayerIndex];
 
+    // 关掉历史面板，防止看到其他玩家的隐私信息
+    const historyPanel = document.getElementById('history-panel');
+    if (historyPanel && !historyPanel.classList.contains('hidden')) {
+      historyPanel.classList.add('hidden');
+    }
+
     document.getElementById('switch-player-name').textContent = nextPlayer.name;
     document.getElementById('switch-confirm-name').textContent = nextPlayer.name;
     document.getElementById('switch-screen').classList.remove('hidden');
@@ -1926,12 +1932,10 @@
     const game = GameManager.game;
     if (!game || !game.history) { list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:var(--space-md);">暂无记录</div>'; return; }
 
-    // 当前查看者（人类玩家）的ID，用于判断哪些信息可以显示
-    const viewerId = GameManager.humanPlayerId;
-    // 本地多人模式下，当前屏幕显示的是哪个玩家
-    const localViewerId = GameManager.mode === 'local'
-      ? (game.players[game.currentPlayerIndex] ? game.players[game.currentPlayerIndex].id : null)
-      : viewerId;
+    // 本地多人模式：用当前屏幕显示的玩家；AI模式：用人类玩家
+    const effectiveViewerId = GameManager.mode === 'local'
+      ? (game.players[game.currentPlayerIndex] ? game.players[game.currentPlayerIndex].id : GameManager.humanPlayerId)
+      : GameManager.humanPlayerId;
 
     const entries = game.history;
     let html = '';
@@ -1943,8 +1947,8 @@
       const player = game.players[entry.playerIndex];
       const playerName = player ? player.name : '?';
       const data = entry.data || {};
-      // 这个操作是不是当前查看者自己做的
-      const isOwn = player && (player.id === viewerId || player.id === localViewerId);
+      // 这个操作是不是当前查看者自己做的（本地多人：严格只认当前玩家）
+      const isOwn = player && player.id === effectiveViewerId;
 
       let icon, text, cls;
       switch (entry.actionType) {
