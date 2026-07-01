@@ -10,6 +10,10 @@ const GameRenderer = {
   isLocalMode: false,
   // 游戏引用
   game: null,
+  // 在线模式：当前玩家的玩家ID
+  _onlinePlayerId: null,
+  // 在线模式：来自服务端的 getVisibleState 缓存
+  _onlineGame: null,
 
   /** 初始化 */
   init(humanPlayerId, isLocalMode) {
@@ -33,10 +37,8 @@ const GameRenderer = {
     const container = document.getElementById('opponents-area');
     if (!container) return;
 
-    const players = game.players.filter(p => {
-      if (this.isLocalMode) return p.id !== this._getViewerId(game);
-      return p.id !== this.humanPlayerId;
-    });
+    const viewerId = this._getViewerId(game);
+    const players = game.players.filter(p => p.id !== viewerId);
 
     container.innerHTML = players.map(p => this._renderOpponentCards(p, game)).join('');
   },
@@ -63,9 +65,10 @@ const GameRenderer = {
         const c = pc.card;
         const colorCls = c ? `color-${c.color}` : '';
         const colorLabel = c ? (c.color === 'black' ? '黑' : '白') : '';
+        const clickFn = game.mode === 'online' ? 'onOpponentCardClickOnline' : 'onOpponentCardClick';
         return `
           <div class="game-card selectable-target ${colorCls}" data-player="${player.id}" data-pos="${pc.position}"
-               onclick="onOpponentCardClick('${player.id}', ${pc.position})">
+               onclick="${clickFn}('${player.id}', ${pc.position})">
             <div class="card-inner">
               <div class="card-back">
                 <span class="card-back-color">${colorLabel}</span>
@@ -188,7 +191,10 @@ const GameRenderer = {
     if (turnEl) turnEl.textContent = `第 ${game.turnNumber} 回合`;
     if (pileEl) pileEl.textContent = `${game.deck.length}`;
     if (modeEl) {
-      const modeText = game.mode === 'ai' ? 'AI对战' : (game.mode === 'local' ? '本地多人' : '联机对战');
+      let modeText = game.mode === 'ai' ? 'AI对战' : (game.mode === 'local' ? '本地多人' : '联机对战');
+      if (game.mode === 'online' && typeof OnlineClient !== 'undefined' && OnlineClient.roomCode) {
+        modeText += ' · ' + OnlineClient.roomCode;
+      }
       modeEl.textContent = modeText;
     }
   },
@@ -258,6 +264,10 @@ const GameRenderer = {
 
   /** 获取当前查看者ID */
   _getViewerId(game) {
+    // 在线模式：使用 OnlineManager 的 playerId
+    if (game && game.mode === 'online') {
+      return this._onlinePlayerId || this.humanPlayerId;
+    }
     if (this.isLocalMode) {
       return game.players[game.currentPlayerIndex].id;
     }
