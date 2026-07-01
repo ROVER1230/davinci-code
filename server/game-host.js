@@ -353,7 +353,7 @@ class GameHost {
 
     // 推进回合
     this._startTurn(room);
-  },
+  }
 
   /**
    * 广播游戏状态（每个玩家收到 getVisibleState 过滤后的版本）
@@ -371,8 +371,7 @@ class GameHost {
       // 当前玩家需要看到自己摸到的牌
       if (player.id === visibleState.players[game.currentPlayerIndex].id
           && game.drawnCard
-          && (game.phase === GameCore.PHASES.GUESS || game.phase === GameCore.PHASES.JOKER_PLACE
-              || game.phase === GameCore.PHASES.CONTINUE_OR_STOP)) {
+          && (game.phase === GameCore.PHASES.GUESS || game.phase === GameCore.PHASES.JOKER_PLACE)) {
         visibleState.drawnCard = JSON.parse(JSON.stringify(game.drawnCard));
       }
       const currentPlayer = game.players[game.currentPlayerIndex];
