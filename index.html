@@ -904,8 +904,9 @@
           </button>
         </div>
 
-        <div style="text-align:center;margin-top:var(--space-md);">
+        <div style="text-align:center;margin-top:var(--space-md);display:flex;gap:var(--space-md);justify-content:center;">
           <button class="btn btn-secondary" onclick="OnlineClient.disconnect();showHome();">返回首页</button>
+          <button class="btn btn-ghost btn-sm" onclick="startOnlineTutorial()">🎓 联机教程</button>
         </div>
       </div>
     </div>
@@ -2558,6 +2559,160 @@
     document.querySelector('.tutorial-overlay')?.remove();
     // 跳过教程也算完成了，下次不再强制弹出
     localStorage.setItem('davinci_tutorial_done', '1');
+  }
+
+  // ============ 联机教程 ============
+  const onlineTutorialSteps = [
+    { id: 1, title: '输入昵称', text: '在「创建房间」区域输入你的游戏昵称，好友会通过昵称认出你。', target: '#online-create-name' },
+    { id: 2, title: '选择人数', text: '选择想要的对战人数（2-4人）。如果是双人对战，选2人即可。', target: '#online-player-count' },
+    { id: 3, title: '创建房间', text: '点击「创建房间」按钮。系统会生成一个6位房间码，把它分享给好友。', target: '#screen-online-setup .online-setup-card:first-child .btn-primary' },
+    { id: 4, title: '📋 房间码', text: '这是你的房间码！点击即可复制，然后通过微信/QQ发给好友。好友在「加入房间」中输入此码即可加入。', target: '#lobby-room-code' },
+    { id: 5, title: '👥 等待玩家', text: '在这里可以看到已加入的玩家。等所有人到齐后（绿色圆点表示在线），房主点击「开始游戏」。', target: '#lobby-players' },
+    { id: 6, title: '▶️ 开始游戏', text: '确认所有人到齐后，点击「开始游戏」按钮。游戏规则和单机版相同——摸牌、猜牌、淘汰对手！', target: '#btn-start-game-online' },
+    { id: 'complete', title: '教程完成！', text: '联机对战的基本流程就是这样。找个好友来一局吧！🎉', target: '#turn-banner' },
+  ];
+
+  let currentOnlineTutorialStep = 0;
+  let _onlineTutorialCreated = false;
+
+  function startOnlineTutorial() {
+    _onlineTutorialCreated = false;
+    currentOnlineTutorialStep = 0;
+    // 确保已连接并在设置页面
+    showOnlineSetup();
+    // 预设昵称
+    const nameInput = document.getElementById('online-create-name');
+    if (nameInput && nameInput.value === '玩家') nameInput.value = '教程玩家';
+    showOnlineTutorialStep(1);
+  }
+
+  function showOnlineTutorialStep(stepId) {
+    if (stepId === 'complete') {
+      document.querySelector('.tutorial-overlay')?.remove();
+      showModal(`
+        <h2>🎓 联机教程完成！</h2>
+        <p style="text-align:center;color:var(--text-secondary);">
+          你已经知道如何创建房间和邀请好友了。<br>现在就来一局吧！
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-primary" onclick="closeModal();">开始联机对战</button>
+        </div>`);
+      return;
+    }
+
+    const step = onlineTutorialSteps.find(s => s.id === stepId);
+    if (!step) return;
+
+    currentOnlineTutorialStep = onlineTutorialSteps.indexOf(step);
+
+    // 创建或更新教程覆盖层
+    let overlay = document.querySelector('.tutorial-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'tutorial-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    const targetEl = document.querySelector(step.target);
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const isMobile = viewW < 480;
+    const tipWidth = isMobile ? 280 : 320;
+    const tipMinH = isMobile ? 170 : 210;
+    const PAD = isMobile ? 8 : 12;
+
+    let spotlightStyle = '';
+    let tipTop, tipLeft;
+
+    if (targetEl) {
+      const targetRect = targetEl.getBoundingClientRect();
+      spotlightStyle = `top:${targetRect.top - 6}px;left:${targetRect.left - 6}px;`
+        + `width:${targetRect.width + 12}px;height:${targetRect.height + 12}px;`;
+
+      const spaceBelow = viewH - targetRect.bottom - PAD;
+      const spaceAbove = targetRect.top - PAD;
+
+      if (spaceBelow >= tipMinH) {
+        tipTop = targetRect.bottom + PAD;
+      } else if (spaceAbove >= tipMinH) {
+        tipTop = targetRect.top - tipMinH - PAD;
+      } else {
+        tipTop = spaceBelow >= spaceAbove ? viewH - tipMinH - PAD : PAD;
+      }
+
+      const maxTop = viewH - tipMinH - PAD;
+      if (tipTop < PAD) tipTop = PAD;
+      if (tipTop > maxTop) tipTop = maxTop;
+
+      tipLeft = targetRect.left + targetRect.width / 2 - tipWidth / 2;
+      const maxLeft = viewW - tipWidth - PAD;
+      if (tipLeft < PAD) tipLeft = PAD;
+      if (tipLeft > maxLeft) tipLeft = maxLeft;
+    } else {
+      spotlightStyle = 'top:50%;left:50%;width:200px;height:100px;transform:translate(-50%,-50%);';
+      tipTop = (viewH - tipMinH) / 2;
+      tipLeft = (viewW - tipWidth) / 2;
+    }
+
+    overlay.innerHTML = `
+      <div class="tutorial-spotlight" style="${spotlightStyle}"></div>
+      <div class="tutorial-tooltip" style="top:${tipTop}px;left:${tipLeft}px;">
+        <h3>🌐 ${step.title}</h3>
+        <p>${step.text}</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="closeOnlineTutorial()">跳过教程</button>
+          <button class="btn btn-primary btn-sm" onclick="nextOnlineTutorialStep()">
+            ${currentOnlineTutorialStep >= onlineTutorialSteps.length - 1 ? '完成' : '下一步 →'}
+          </button>
+        </div>
+        <div class="tutorial-dots">
+          ${onlineTutorialSteps.filter(s => typeof s.id === 'number').map((s, i) =>
+            `<div class="tutorial-dot ${i === currentOnlineTutorialStep ? 'active' : ''}"></div>`
+          ).join('')}
+        </div>
+      </div>`;
+  }
+
+  function nextOnlineTutorialStep() {
+    const nextIdx = currentOnlineTutorialStep + 1;
+
+    // 第3步（创建房间）：执行实际创建
+    if (nextIdx === 3 && !_onlineTutorialCreated) {
+      _onlineTutorialCreated = true;
+      // 先打开教程弹窗提示正在创建
+      const name = document.getElementById('online-create-name')?.value || '教程玩家';
+      const count = onlinePlayerCount || 2;
+      createOnlineRoom();
+      // 创建后监听房间创建回调
+      const origCallback = OnlineClient.onRoomCreated;
+      OnlineClient.onRoomCreated = (msg) => {
+        // 恢复原回调
+        OnlineClient.onRoomCreated = origCallback;
+        // 延迟一下确保 DOM 更新
+        setTimeout(() => showOnlineTutorialStep(onlineTutorialSteps[nextIdx].id), 600);
+      };
+      return;
+    }
+
+    if (nextIdx >= onlineTutorialSteps.length) {
+      showOnlineTutorialStep('complete');
+    } else {
+      showOnlineTutorialStep(onlineTutorialSteps[nextIdx].id);
+    }
+    // 滚动确保目标可见
+    const nextStep = onlineTutorialSteps[nextIdx];
+    if (nextStep && nextStep.target) {
+      const el = document.querySelector(nextStep.target);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function closeOnlineTutorial() {
+    document.querySelector('.tutorial-overlay')?.remove();
+    if (_onlineTutorialCreated && OnlineClient.roomCode) {
+      OnlineClient.leaveRoom();
+    }
+    showHome();
   }
 
   // ============ Toast ============
