@@ -145,18 +145,18 @@ class GameHost {
           if (game.phase !== 'guess') {
             return { success: false, error: '当前不能猜测，阶段：' + game.phase };
           }
-          newGame = GameCore.makeGuess(game, action.targetPlayerId, action.position, action.color, action.number, {
+          // makeGuess 返回 { game, correct, revealedCard, targetEliminated }
+          const guessResult = GameCore.makeGuess(game, action.targetPlayerId, action.position, action.color, action.number, {
             skipNightmareCheck: false,
           });
-          // 检查猜测结果
-          const lastEntry = newGame.history[newGame.history.length - 1];
-          const guessData = lastEntry ? lastEntry.data : {};
-          const correct = guessData.correct;
-          const targetEliminated = guessData.targetEliminated || false;
+          newGame = guessResult.game;
+          const correct = guessResult.correct;
+          const targetEliminated = guessResult.targetEliminated || false;
+          const revealedCard = guessResult.revealedCard || null;
 
           // 查找目标玩家
           const targetPlayer = newGame.players.find(p => p.id === action.targetPlayerId);
-          const guessedCard = guessData.guessed;
+          const guessed = { color: action.color, number: action.number };
 
           this._addEvent(room, 'guess_result', {
             guesserId: playerId,
@@ -164,9 +164,9 @@ class GameHost {
             targetId: action.targetPlayerId,
             targetName: targetPlayer ? targetPlayer.name : '?',
             position: action.position,
-            guessed: guessedCard,
+            guessed,
             correct,
-            revealedCard: guessData.revealedCard || null,
+            revealedCard,
             targetEliminated,
           });
 
@@ -184,7 +184,7 @@ class GameHost {
             this._addEvent(room, 'reveal_own_event', {
               playerId,
               playerName: player.name,
-              revealedCard: guessData.revealedCard || null,
+              revealedCard,
             });
           }
           // 推进回合
@@ -246,6 +246,14 @@ class GameHost {
 
     // 检查当前玩家是否在线
     if (playerSlot && !playerSlot.connected) {
+      // 检查是否所有玩家都离线 → 暂停游戏，避免无限递归
+      const anyConnected = room.players.some(p => p.connected);
+      if (!anyConnected) {
+        console.log(`[游戏] 房间 ${room.code} 所有玩家离线，暂停等待重连`);
+        this._clearTurnTimer(room.code);
+        return;
+      }
+
       // 玩家离线，自动跳过回合
       this._addEvent(room, 'turn_skipped', {
         playerId: player.id,
