@@ -9,8 +9,10 @@ const OnlineClient = {
   connected: false,
   reconnectTimer: null,
   reconnectAttempts: 0,
-  maxReconnectAttempts: 5,
+  maxReconnectAttempts: 10,
   baseReconnectDelay: 1500,
+  _heartbeatTimer: null,
+  _pendingReconnect: false,
 
   // 回调函数（由 OnlineManager 注册）
   onConnected: null,
@@ -45,6 +47,9 @@ const OnlineClient = {
       this.connected = true;
       this.reconnectAttempts = 0;
 
+      // 🔑 启动客户端心跳：每20秒发 ping 防止路由器断开空闲连接
+      this._startHeartbeat();
+
       if (this.onConnected) this.onConnected();
     };
 
@@ -60,12 +65,32 @@ const OnlineClient = {
     this.ws.onclose = (event) => {
       console.log('[OnlineClient] 连接关闭:', event.code, event.reason);
       this.connected = false;
+      this._stopHeartbeat();
       this._tryReconnect();
     };
 
     this.ws.onerror = (e) => {
       console.error('[OnlineClient] WebSocket 错误');
     };
+  },
+
+  /**
+   * 🔑 客户端心跳：每20秒发 ping，防止 NAT/路由器因空闲断开 WebSocket
+   */
+  _startHeartbeat() {
+    this._stopHeartbeat();
+    this._heartbeatTimer = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.send({ type: 'ping' });
+      }
+    }, 20000);
+  },
+
+  _stopHeartbeat() {
+    if (this._heartbeatTimer) {
+      clearInterval(this._heartbeatTimer);
+      this._heartbeatTimer = null;
+    }
   },
 
   /**
@@ -133,7 +158,10 @@ const OnlineClient = {
    * 断开连接
    */
   disconnect() {
+    this._stopHeartbeat();
     this.reconnectAttempts = this.maxReconnectAttempts;
+    this._pendingReconnect = false;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -216,7 +244,13 @@ const OnlineClient = {
 
     // 不清除 roomCode 和 playerId，用于重连
     if (!this.roomCode || !this.playerId) return;
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('[OnlineClient] 达到最大重连次数，停止重连');
+      if (this.onError) this.onError('连接已断开，请刷新页面重新加入');
+      return;
+    }
+    if (this._pendingReconnect) return; // 防止重复重连
+    this._pendingReconnect = true;
 
     const delay = Math.min(
       this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
@@ -226,19 +260,23 @@ const OnlineClient = {
     console.log(`[OnlineClient] ${delay/1000}s 后尝试重连 (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
 
     this.reconnectTimer = setTimeout(() => {
+      this._pendingReconnect = false;
       this.reconnectAttempts++;
-      this.connect();
-      // 重连后在 onConnected 中发送 reconnect 消息
-      const origConnected = this.onConnected;
+      // 重连后自动发送 reconnect 消息
+      const origOnConnected = this.onConnected;
       this.onConnected = () => {
+        // 先发送重连请求
         this.send({
           type: 'reconnect',
           roomCode: this.roomCode,
           playerId: this.playerId,
         });
-        this.onConnected = origConnected;
-        if (origConnected) origConnected();
+        // 恢复原回调（但不要再次被覆盖）
+        this.onConnected = origOnConnected;
+        // 再调用原回调
+        if (origOnConnected) origOnConnected();
       };
+      this.connect();
     }, delay);
   },
 };

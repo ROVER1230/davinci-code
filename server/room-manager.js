@@ -39,7 +39,7 @@ class RoomManager {
       settings: {
         playerCount: settings.playerCount || 3,
         enableJoker: settings.enableJoker !== false,
-        turnTimeLimit: 60,
+        turnTimeLimit: 90,
       },
       players: [],
       game: null,       // 游戏开始后赋值

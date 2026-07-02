@@ -51,15 +51,48 @@ const httpServer = http.createServer((req, res) => {
 // ==================== WebSocket 服务 ====================
 const wss = new WebSocketServer({ noServer: true });
 
-// 引入联机模块
+// 引入联机模块（必须在 connection handler 之前加载）
 const MessageRouter = require('../server/message-router.js');
 const router = new MessageRouter();
+
+// 🔑 服务端心跳：每30秒向所有连接发送 ping，15秒无响应视为断线
+const PING_INTERVAL = 30000;
+const heartbeatMap = new Map(); // ws → { alive: boolean }
+
+setInterval(() => {
+  wss.clients.forEach((ws) => {
+    const hb = heartbeatMap.get(ws);
+    if (hb) {
+      if (!hb.alive) {
+        // 上次 ping 未收到 pong → 断开
+        console.log('[心跳] 客户端无响应，断开连接');
+        ws.terminate();
+        heartbeatMap.delete(ws);
+        return;
+      }
+      hb.alive = false;
+      ws.ping();
+    }
+  });
+}, PING_INTERVAL);
 
 wss.on('connection', (ws, req) => {
   const clientIP = req.socket.remoteAddress;
   console.log(`[连接] 新客户端: ${clientIP}`);
 
+  // 注册心跳
+  heartbeatMap.set(ws, { alive: true });
+
+  ws.on('pong', () => {
+    const hb = heartbeatMap.get(ws);
+    if (hb) hb.alive = true;
+  });
+
   ws.on('message', (data) => {
+    // 收到任何消息说明连接活跃
+    const hb = heartbeatMap.get(ws);
+    if (hb) hb.alive = true;
+
     try {
       router.handleMessage(ws, data.toString());
     } catch (e) {
@@ -70,6 +103,7 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log(`[断开] 客户端: ${clientIP}`);
+    heartbeatMap.delete(ws);
     try {
       router.handleDisconnect(ws);
     } catch (e) {
@@ -79,6 +113,7 @@ wss.on('connection', (ws, req) => {
 
   ws.on('error', (e) => {
     console.error('[错误] WebSocket:', e.message);
+    heartbeatMap.delete(ws);
   });
 
   // 发送欢迎消息
